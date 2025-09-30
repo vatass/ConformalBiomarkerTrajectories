@@ -49,6 +49,8 @@ This work presents a novel approach for predicting biomarker trajectories with u
 
 ## Installation
 
+
+
 1. Clone the repository:
 ```bash
 git clone https://github.com/yourusername/ConformalBiomarkerTrajectories.git
@@ -140,3 +142,60 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 ---
 
 *This repository is associated with the NeurIPS 2025 paper "Uncertainty-Calibrated Prediction of Randomly-Timed Biomarker Trajectories with Conformal Bands".*
+
+## Environment Setup
+
+This project requires a conda environment with specific dependencies. Here are the setup instructions:
+
+### Method 1: Using Conda Environment File (Recommended)
+
+```bash
+# Create a new conda environment using the exported requirements
+conda create --name conformal-biomarker --file conda_requirements.txt
+
+# Activate the environment
+conda activate conformal-biomarker
+
+# Install additional Python packages
+pip install -r requirements.txt
+```
+
+### Method 2: Manual Environment Creation
+
+If the above method doesn't work, create the environment manually:
+
+```bash
+# Create a new conda environment with Python 3.8
+conda create -n conformal-biomarker python=3.8
+conda activate conformal-biomarker
+
+# Install core dependencies
+conda install numpy=1.22.3 pandas=1.2.3 scipy=1.9.3 scikit-learn=1.3.0
+conda install pytorch=1.12.1 cpuonly -c pytorch
+conda install gpytorch -c gpytorch
+conda install pyyaml=6.0.2 joblib=1.4.2
+
+# Install additional packages
+pip install -r requirements.txt
+```
+
+### Key Dependencies
+
+- **Python**: 3.8.20
+- **PyTorch**: 1.12.1 (CPU version)
+- **GPyTorch**: 1.10.0
+- **NumPy**: 1.22.3
+- **Pandas**: 1.2.3
+- **SciPy**: 1.9.3
+- **Scikit-learn**: 1.3.0
+
+### Verification
+
+Test your environment setup:
+
+```bash
+conda activate conformal-biomarker
+python -c "import torch; print(f'PyTorch: {torch.__version__}')"
+python -c "import gpytorch; print(f'GPyTorch: {gpytorch.__version__}')"
+python -c "import numpy as np; print(f'NumPy: {np.__version__}')"
+```
