@@ -1,4 +1,7 @@
-from re import L
+'''
+exactgpmodels - Cleaned version containing only actively used classes
+'''
+
 import torch
 import torch.nn as nn 
 import gpytorch
@@ -6,75 +9,10 @@ import math
 
 from gpytorch.means import ConstantMean, LinearMean
 from gpytorch.kernels import RBFKernel, ScaleKernel, MaternKernel
-from gpytorch.variational import VariationalStrategy, CholeskyVariationalDistribution, LMCVariationalStrategy
 from gpytorch.distributions import MultivariateNormal
 from gpytorch.models import ApproximateGP, GP
 from gpytorch.mlls import VariationalELBO, AddedLossTerm
 from gpytorch.likelihoods import GaussianLikelihood
-
-from gpytorch.models.deep_gps import DeepGPLayer, DeepGP
-from gpytorch.mlls import DeepApproximateMLL
-
-from gpytorch.models.deep_gps import DeepGPLayer, DeepGP
-from gpytorch.mlls import DeepApproximateMLL, VariationalELBO
-from gpytorch.likelihoods import MultitaskGaussianLikelihood
-
-# We will use the simplest form of GP model, exact inference
-class ExactGPModel(gpytorch.models.ExactGP):
-    def __init__(self, train_x, train_y, likelihood):
-        super(ExactGPModel, self).__init__(train_x, train_y, likelihood)
-        self.mean_module = gpytorch.means.LinearMean(train_x.shape[1])
-        self.covar_module = gpytorch.kernels.ScaleKernel(gpytorch.kernels.RBFKernel(ard_num_dims=train_x.shape[1]))
-        
-    def forward(self, x):
-        mean_x = self.mean_module(x)
-        covar_x = self.covar_module(x)
-        return gpytorch.distributions.MultivariateNormal(mean_x, covar_x)
-
-
-class SingleTaskDeepKernelMetaTasks(): 
-    def __init__(self, input_dim, train_x, train_y, likelihood, depth, dropout, activation, pretrained,latent_dim, feature_extractor, gphyper, kernel_choice='RBF', mean='CONSTANT'):
-        super(SingleTaskDeepKernelMetaTasks, self).__init__(train_x, train_y, likelihood)
-        self.likelihood = likelihood
-        self.mean_module = gpytorch.means.LinearMean(input_size=latent_dim)
-        self.covar_module = gpytorch.kernels.ScaleKernel(gpytorch.kernels.RBFKernel(ard_num_dims=latent_dim))
-
-        self.pretrained = pretrained
-
-        if not pretrained: 
-            self.feature_extractor = LargeFeatureExtractor(datadim=input_dim, depth=depth, dr=dropout, activ=activation)
-        else: 
-            self.feature_extractor = feature_extractor
-        # This module will scale the NN features so that they're nice values
-        self.scale_to_bounds = gpytorch.utils.grid.ScaleToBounds(-1., 1.)
-
-        if gphyper is not None: 
-            self.initialize(**gphyper)
-
-        self.sex_classifier = CovariateClassifier(input_dim=latent_dim)
-        self.diagnosis_classifier = CovariateClassifier(input_idm=latent_dim) 
-        self.Age_Regression = AgeRegressor(input_dim=latent_dim) 
-        self.roi_recon = ROIRegressor(input_dim=latent_dim)
-
-    def forward(self, x):
-        # We're first putting our data through a deep net (feature extractor)
-        projected_x = self.feature_extractor(x)
-        projected_x = self.scale_to_bounds(projected_x)  # Make the NN values "nice"
-
-        if self.pretrained:
-            projected_x = projected_x.detach()
-
-        mean_x = self.mean_module(projected_x)
-        covar_x = self.covar_module(projected_x)
-
-        sex_pred = self.sex_classifier(projected_x)
-        diagnosis_pred = self.diagnosis_classifier(projected_x)
-        age_pred = self.Age_Regression(projected_x)
-        roi_recon = self.roi_recon(projected_x)
-
-        return sex_pred, diagnosis_pred, age_pred, roi_recon, gpytorch.distributions.MultivariateNormal(mean_x, covar_x)
-
-
 
 class SingleTaskDeepKernelNonLinear(gpytorch.models.ExactGP): 
     def __init__(self, input_dim, train_x, train_y, likelihood, depth, dropout, activation, pretrained,latent_dim, feature_extractor, gphyper, kernel_choice='RBF', mean='CONSTANT'):
@@ -94,7 +32,6 @@ class SingleTaskDeepKernelNonLinear(gpytorch.models.ExactGP):
 
         if gphyper is not None: 
             self.initialize(**gphyper)
-
 
     def forward(self, x):
         # We're first putting our data through a deep net (feature extractor)
@@ -145,82 +82,6 @@ class SingleTaskDeepKernel(gpytorch.models.ExactGP):
         return gpytorch.distributions.MultivariateNormal(mean_x, covar_x)
 
 
-
-class SingleTaskDeepKernelNoDetach(gpytorch.models.ExactGP): 
-    def __init__(self, input_dim, train_x, train_y, likelihood, depth, dropout, activation, pretrained,latent_dim, feature_extractor, gphyper, kernel_choice='RBF', mean='CONSTANT'):
-        super(SingleTaskDeepKernelNoDetach, self).__init__(train_x, train_y, likelihood)
-        self.likelihood = likelihood
-        self.mean_module = gpytorch.means.LinearMean(input_size=latent_dim)
-        # self.mean_module = gpytorch.means.ConstantMean()
-        self.covar_module = gpytorch.kernels.ScaleKernel(gpytorch.kernels.RBFKernel(ard_num_dims=latent_dim))
-
-        self.pretrained = pretrained
-
-        if not pretrained: 
-            self.feature_extractor = LargeFeatureExtractor(datadim=input_dim, depth=depth, dr=dropout, activ=activation)
-        else: 
-            self.feature_extractor = feature_extractor
-        # This module will scale the NN features so that they're nice values
-        self.scale_to_bounds = gpytorch.utils.grid.ScaleToBounds(-1., 1.)
-
-        if gphyper is not None: 
-            self.initialize(**gphyper)
-
-
-    def forward(self, x):
-        # We're first putting our data through a deep net (feature extractor)
-        projected_x = self.feature_extractor(x)
-        projected_x = self.scale_to_bounds(projected_x)  # Make the NN values "nice"
-
-        mean_x = self.mean_module(projected_x)
-        covar_x = self.covar_module(projected_x)
-
-        return gpytorch.distributions.MultivariateNormal(mean_x, covar_x)
-
-
-class MetaGP(gpytorch.models.ExactGP):
-    def __init__(self, train_x, train_y, likelihood, gp_params):
-        super(MetaGP, self).__init__(train_x, train_y, likelihood)
-        self.mean_module = gpytorch.means.LinearMean(train_x.shape[1])
-        self.covar_module = gpytorch.kernels.ScaleKernel(gpytorch.kernels.RBFKernel(ard_num_dims=train_x.shape[1]))
-        
-        if gp_params is not None:
-            self.initialize(**gp_params)
-
-    def forward(self, x):
-        mean_x = self.mean_module(x)
-        covar_x = self.covar_module(x)
-        return gpytorch.distributions.MultivariateNormal(mean_x, covar_x)
-
-
-
-class CovariateClassifier(torch.nn.Sequential): 
-    def __init__(self, input_dim): 
-        super(CovariateClassifier, self).__init__()
-        # Deep Kernel Architecture
-        self.input_dim = input_dim 
-        self.add_module('linear1',  torch.nn.Linear(input_dim, int(input_dim/4)))
-        self.add_module('activ1', torch.nn.ReLU())
-        self.add_module('linear2',  torch.nn.Linear(int(input_dim/4),1))
-
-class AgeRegressor(torch.nn.Sequential): 
-    def __init__(self, input_dim): 
-        super(AgeRegressor, self).__init__()
-        # Deep Kernel Architecture
-        self.input_dim = input_dim 
-        self.add_module('linear1',  torch.nn.Linear(input_dim, int(input_dim/4)))
-        self.add_module('activ1', torch.nn.ReLU())
-        self.add_module('linear2',  torch.nn.Linear(int(input_dim/4),1))
-
-class ROIRegressor(torch.nn.Sequential): 
-    def __init__(self, input_dim): 
-        super(ROIRegressor, self).__init__()
-        # Deep Kernel Architecture
-        self.input_dim = input_dim 
-        self.add_module('linear1',  torch.nn.Linear(input_dim, int(input_dim*2)))
-        self.add_module('activ1', torch.nn.ReLU())
-        self.add_module('linear2',  torch.nn.Linear(int(input_dim*2), 145))
-        
 class LargeFeatureExtractorNonLin(torch.nn.Sequential):
     def __init__(self, datadim, depth, dr, activ):
         super(LargeFeatureExtractorNonLin, self).__init__()

@@ -10,7 +10,7 @@ import torch
 import gpytorch
 from functions import *
 import pickle
-from exactgpmodels import SingleTaskDeepKernelNonLinear, SingleTaskDeepKernel
+from models import SingleTaskDeepKernelNonLinear, SingleTaskDeepKernel
 import argparse
 import matplotlib.pyplot as plt 
 import seaborn as sns 
