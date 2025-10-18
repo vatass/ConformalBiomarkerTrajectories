@@ -504,7 +504,6 @@ parser.add_argument("--file", help="Identifier for the data", default="conformal
 parser.add_argument("--iterations", help="Epochs", default=200)
 parser.add_argument("--optimizer", help='Optimizer', default='adam')
 parser.add_argument("--learning_rate", help='Learning Rate', type=float, default=0.02)    # 0.01844 is in hmuse rois 
-parser.add_argument("--task", help='Task id', type=str, default="MUSE")  # Right Hippocampus 
 parser.add_argument("--roi_idx", type=int, default=14)
 
 ## Conformal Prediction Parameters 
@@ -534,7 +533,7 @@ file = args.file
 iterations = args.iterations
 optimizer = args.optimizer
 learning_rate = args.learning_rate
-task = args.task
+task = "MUSE"
 roi_idx = args.roi_idx
 
 # Conrformal Prediction Parameters

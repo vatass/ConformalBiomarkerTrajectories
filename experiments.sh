@@ -3,7 +3,6 @@
 echo "Starting Conformal Prediction experiments..."
 echo "Train the Volume Functions..."
 
-biomarker='MUSE'
 # List of specific ROI indices
 roi_indices=(13 17 23 14 4 5 109)
 # Extensive Experimentation of Calibration Set Sizes for Different Confidence Levels
@@ -18,33 +17,29 @@ for roi_idx in "${roi_indices[@]}"; do
     for split_percentage in "${conformalsplitpercentages[@]}"; do
         for alpha in "${alphas[@]}"; do
             echo "Training for ROI index: $roi_idx with conformal split percentage: $split_percentage and alpha: $alpha"
-            python advanced_split_conformal_dkgp.py --gpuid 0 \
+            python confomal_dkgp.py --gpuid 0 \
                                      --file conformal_longitudinal_abniblsa.csv \
                                      --roi_idx "$roi_idx" \
                                      --conformalsplitpercentage "$split_percentage" \
-                                     --alpha "$alpha" \
-                                     --task "MUSE"
+                                     --alpha "$alpha"
             
-            python quantileregression.py --gpuid 0 \
+            python conformal_quantile_regression.py --gpuid 0 \
                               --file conformal_longitudinal_abniblsa.csv \
                               --roi_idx "$roi_idx" \
                               --calibrationset "$split_percentage" \
-                              --alpha "$alpha" \
-                              --task "MUSE"
+                              --alpha "$alpha"
             
-            python deep_regression_with_montecarlo.py --gpuid 0 \
+            python conformal_drmc.py --gpuid 0 \
                                            --file conformal_longitudinal_abniblsa.csv \
                                            --roi_idx "$roi_idx" \
                                            --calibrationset "$split_percentage" \
-                                           --alpha  "$alpha" \
-                                           --task "MUSE"
+                                           --alpha  "$alpha"
 
-            python bootstrap.py --gpuid 0 \
+            python conformal_bootstrap.py --gpuid 0 \
                     --file conformal_longitudinal_abniblsa.csv \
                     --roi_idx "$roi_idx" \
                     --calibrationset  "$split_percentage" \
-                    --alpha "$alpha" \
-                    --task "MUSE"
+                    --alpha "$alpha"
 
 
         done

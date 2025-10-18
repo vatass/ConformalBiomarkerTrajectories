@@ -59,7 +59,6 @@ parser.add_argument("--dropout", help='indicates the dropout rate', default=0.2,
 parser.add_argument("--iterations", help="Epochs", default=50)
 parser.add_argument("--optimizer", help='Optimizer', default='adam')
 parser.add_argument("--learning_rate", help='Learning Rate', type=float, default=0.02)    # 0.01844 is in hmuse rois 
-parser.add_argument("--task", help='Task id', type=str, default="MUSE")  # Right Hippocampus 
 parser.add_argument("--roi_idx", type=int, default=14)
 
 
@@ -76,7 +75,7 @@ dropout = args.dropout
 iterations = args.iterations
 optimizer = args.optimizer
 learning_rate = args.learning_rate
-task = args.task
+task = "MUSE"
 roi_idx = args.roi_idx
 alpha = float(args.alpha) 
 
