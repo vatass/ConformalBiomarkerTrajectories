@@ -71,11 +71,11 @@ def main():
     # 3. Preprocess & anonymize covariates
     # --------------------------
     cov_df = pd.read_csv(COVARIATE_PATH)
-    if "Time" not in cov_df.columns or "Age" not in cov_df.columns:
-        raise ValueError("Covariates file must contain 'Time' and 'Age' columns.")
+    if "Time" not in cov_df.columns or "Diagnosis" not in cov_df.columns:
+        raise ValueError("Covariates file must contain 'Time' and 'Diag' columns.")
 
     # Filter for Time = 0 and keep only Age
-    baseline_df = cov_df[cov_df["Time"] == 0][[ID_COLUMN, "Age"]].copy()
+    baseline_df = cov_df[cov_df["Time"] == 0][[ID_COLUMN, "Diagnosis"]].copy()
     baseline_df[ID_COLUMN] = baseline_df[ID_COLUMN].astype(str)
 
     # Apply mapping
@@ -86,7 +86,7 @@ def main():
     baseline_df = baseline_df[baseline_df["anon_id"].isin(valid_anon_ids)]
 
     # Final columns: anon_id, Age
-    final_cov_df = baseline_df[["anon_id", "Age"]]
+    final_cov_df = baseline_df[["anon_id", "Diagnosis"]]
     final_cov_df.to_csv(ANONYMIZED_COVARIATES_PATH, index=False)
     print(f"✅ Saved anonymized covariates to: {ANONYMIZED_COVARIATES_PATH}")
 
