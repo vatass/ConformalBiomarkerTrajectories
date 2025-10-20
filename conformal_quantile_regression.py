@@ -703,7 +703,6 @@ for fold in range(10):
         conformity_scores_per_subject['conformal_scores'].append(np.max(conformal_scores))
 
     conformity_scores_per_subject_df = pd.DataFrame(data=conformity_scores_per_subject)
-    conformity_scores_per_subject_df.to_csv('conformal_scores_fold_' + str(fold) + '.csv', index=False)
 
     # gather all the conformity scores
     conformity_scores = np.array(conformity_scores_per_subject['conformal_scores'])

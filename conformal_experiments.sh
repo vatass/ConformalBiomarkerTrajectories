@@ -31,4 +31,14 @@ for roi_idx in "${BIOMARKER_INDICES[@]}"; do
   python conformal_quantile_regression.py \
     --file "$DATA_FILE" \
     --biomarker_idx "$roi_idx"
+
+  python group_conditional_conformal_dkgp.py \
+    --file "$DATA_FILE" \
+    --roi_idx "$roi_idx"
+
 done
+
+
+echo "Conformal experiments completed."
+
+echo "Clinical Application:"

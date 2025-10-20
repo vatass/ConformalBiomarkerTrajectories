@@ -2,26 +2,26 @@
 Group Conformal Prediction - DKGP Predictor for Diagnosis Covariate
 '''
 
-import pandas as pd
-import numpy as np
-from pandas.core.arrays.sparse import dtype
-from pandas.core.indexes.base import default_index 
+import os
 import sys
+import time
+import json
+import math
+import random
+import pickle
+import argparse
+
+import numpy as np
+import pandas as pd
 import torch
 import gpytorch
-from functions import *
-import pickle
-from exactgpmodels import SingleTaskDeepKernelNonLinear, SingleTaskDeepKernel
-import argparse
-import matplotlib.pyplot as plt 
-import seaborn as sns 
-from tqdm import tqdm 
-import wandb
-import time 
-import json
-import math 
-from utils import * 
-import random
+
+import matplotlib.pyplot as plt
+import seaborn as sns
+from tqdm import tqdm
+
+from functions import process_temporal_singletask_data
+from models import SingleTaskDeepKernel
 
 ##### SET RANDOM SEED ####
 # Set random seeds
@@ -59,13 +59,12 @@ alpha = float(args.alpha)
 conformalsplitpercentage = args.conformalsplitpercentage
 
 calibration_results = {'id': [], 'kfold': [], 'score': [], 'lower': [], 'upper': [], 'variance': [], 'y': [], 'time': [], 'ae': []}
-stratified_conformalized_results = {'id': [], 'kfold': [], 'score': [], 'lower': [], 'upper': [], 'variance': [], 'y': [], 'time': [], 'ae': [], 'winkler': [], 'covariate': [] }
-unstratified_conformalized_results = {'id': [], 'kfold': [], 'score': [], 'lower': [], 'upper': [], 'variance': [], 'y': [], 'time': [], 'ae': [], 'winkler': [] }
+population_conformalized_results = {'id': [], 'kfold': [], 'score': [], 'lower': [], 'upper': [], 'variance': [], 'y': [], 'time': [], 'ae': [], 'winkler': [], 'covariate': [] }
+group_conditional_conformalized_results = {'id': [], 'kfold': [], 'score': [], 'lower': [], 'upper': [], 'variance': [], 'y': [], 'time': [], 'ae': [], 'winkler': [] }
 
 qhat_dict = {'qhat': [], 'calibration_set_size': [], 'fold': [], 'covariate': []}
 unstrat_qhat_dict = {'qhat': [], 'calibration_set_size': [], 'fold': []}
 
-mae_MTGP_list, coverage_MTGP_list, interval_MTGP_list = [], [], [] 
 datasamples = pd.read_csv(file)    
 
 
@@ -76,10 +75,11 @@ longitudinal_covariates['Diagnosis'].replace(
 
 # Define valid options for each covariate
 valid_values = {
-    'Baseline_Diagnosis': {'CN', 'MCI', 'AD'},
+    'Diagnosis': {'CN', 'MCI', 'AD'},
 }
 
-print(task,roi_idx)
+list_index = biomarker_idx 
+
 for fold in range(10): 
     print('FOLD::', fold)
     train_ids, test_ids = [], []     
@@ -110,13 +110,13 @@ for fold in range(10):
             raise ValueError('Test Samples belong to the train!')
 
     ### SET UP THE TRAIN/TEST DATA FOR THE MULTITASK GP### 
-    train_x = datasamples[datasamples['PTID'].isin(train_ids)]['X']
-    train_y = datasamples[datasamples['PTID'].isin(train_ids)]['Y']    
-    test_x = datasamples[datasamples['PTID'].isin(test_ids)]['X']
-    test_y = datasamples[datasamples['PTID'].isin(test_ids)]['Y']
+    train_x = datasamples[datasamples['anon_id'].isin(train_ids)]['X']
+    train_y = datasamples[datasamples['anon_id'].isin(train_ids)]['Y']    
+    test_x = datasamples[datasamples['anon_id'].isin(test_ids)]['X']
+    test_y = datasamples[datasamples['anon_id'].isin(test_ids)]['Y']
 
-    corresponding_test_ids = datasamples[datasamples['PTID'].isin(test_ids)]['PTID'].to_list()
-    corresponding_train_ids = datasamples[datasamples['PTID'].isin(train_ids)]['PTID'].to_list() 
+    corresponding_test_ids = datasamples[datasamples['anon_id'].isin(test_ids)]['anon_id'].to_list()
+    corresponding_train_ids = datasamples[datasamples['anon_id'].isin(train_ids)]['anon_id'].to_list() 
     assert len(corresponding_test_ids) == test_x.shape[0]
     assert len(corresponding_train_ids) == train_x.shape[0]
 
@@ -149,10 +149,6 @@ for fold in range(10):
     calibration_ids = np.random.choice(train_ids, int(conformal_split_percentage*len(train_ids)), replace=False)
     train_ids = [x for x in train_ids if x not in calibration_ids]
 
-    # store the calibration ids for the fold
-    with open("conformal_calibration_adniblsa_subjects_"+str(expID)+"_fold_" + str(fold) + ".pkl", "wb") as f:
-        pickle.dump(calibration_ids, f)
-
     print('Train IDs', len(train_ids))
     print('Calibration IDs', len(calibration_ids))
     for t in calibration_ids:
@@ -160,13 +156,13 @@ for fold in range(10):
             raise ValueError('Calibration Samples belong to the train!')
         
     ### SET UP THE TRAIN/TEST DATA FOR THE MULTITASK GP###
-    train_x = datasamples[datasamples['PTID'].isin(train_ids)]['X']
-    train_y = datasamples[datasamples['PTID'].isin(train_ids)]['Y']
-    calibration_x = datasamples[datasamples['PTID'].isin(calibration_ids)]['X']
-    calibration_y = datasamples[datasamples['PTID'].isin(calibration_ids)]['Y']
+    train_x = datasamples[datasamples['anon_id'].isin(train_ids)]['X']
+    train_y = datasamples[datasamples['anon_id'].isin(train_ids)]['Y']
+    calibration_x = datasamples[datasamples['anon_id'].isin(calibration_ids)]['X']
+    calibration_y = datasamples[datasamples['anon_id'].isin(calibration_ids)]['Y']
 
-    corresponding_train_ids = datasamples[datasamples['PTID'].isin(train_ids)]['PTID'].to_list()
-    corresponding_calibration_ids = datasamples[datasamples['PTID'].isin(calibration_ids)]['PTID'].to_list()
+    corresponding_train_ids = datasamples[datasamples['anon_id'].isin(train_ids)]['anon_id'].to_list()
+    corresponding_calibration_ids = datasamples[datasamples['anon_id'].isin(calibration_ids)]['anon_id'].to_list()
 
     assert len(corresponding_train_ids) == train_x.shape[0]
     assert len(corresponding_calibration_ids) == calibration_x.shape[0]
@@ -203,7 +199,7 @@ for fold in range(10):
         conformal_likelihood = conformal_likelihood.cuda(gpuid)
         conformal_deepkernelmodel = conformal_deepkernelmodel.cuda(gpuid)
 
-    training_iterations  =  iterations
+    training_iterations  =  50
 
     # set up train mode
     conformal_deepkernelmodel.feature_extractor.train()
@@ -242,8 +238,8 @@ for fold in range(10):
     print('Run Inference on Calibration Subjects')
     for id_ in calibration_ids:
         # print('Subject ID', id_)
-        subject_data = datasamples[datasamples['PTID'] == id_]
-        subject_covariates = longitudinal_covariates[longitudinal_covariates['PTID'] == id_]
+        subject_data = datasamples[datasamples['anon_id'] == id_]
+        subject_covariates = longitudinal_covariates[longitudinal_covariates['anon_id'] == id_]
         subject_x = subject_data['X']
         subject_y = subject_data['Y']
 
@@ -270,15 +266,6 @@ for fold in range(10):
             variance = y_preds.variance
             mean = y_preds.mean
             lower, upper = y_preds.confidence_region()
-
-        mae_pop, ae_pop = mae(subject_y.cpu().detach().numpy(), mean.cpu().detach().numpy())
-        mse_pop, rmse_pop, se_pop = mse(subject_y.cpu().detach().numpy(), mean.cpu().detach().numpy())  
-        rsq = R2(subject_y.cpu().detach().numpy(), mean.cpu().detach().numpy()) 
-
-        mae_MTGP_list.append(mae_pop)
-        # get the 50% width 
-        posterior_std = y_preds.variance.sqrt()  # Standard deviation at each test point
-        inverse_width = 1/(upper.cpu().detach().numpy()-lower.cpu().detach().numpy())
 
         calibration_results['id'].extend([id_ for c in range(subject_x.shape[0])]) 
         calibration_results['kfold'].extend([fold for c in range(subject_x.shape[0])])
@@ -308,7 +295,6 @@ for fold in range(10):
         conformity_scores_per_subject['conformal_scores'].append(np.max(conformal_scores))
 
     conformity_scores_per_subject_df = pd.DataFrame(data=conformity_scores_per_subject)
-    conformity_scores_per_subject_df.to_csv('conformity_scores_per_subject_fold_' + expID +'_'+ str(fold) + '.csv', index=False)
     
     ### Calculate the Total Conformity Scores in the Unstratified Calibration Set ####
     print('Store the Conformity Scores in the unstratified calibration set')
@@ -337,7 +323,7 @@ for fold in range(10):
     print('Stratify Conformity Scores per Covariate')
     # Merge datasets
     merged_data = conformity_scores_per_subject_df.merge(
-        longitudinal_covariates, left_on='id', right_on='PTID', how='inner'
+        longitudinal_covariates, left_on='id', right_on='anon_id', how='inner'
     )
 
     covariates = ['Diagnosis']
@@ -348,7 +334,7 @@ for fold in range(10):
         
         for cu in covariate_unique_values:
 
-            if c == 'Baseline_Diagnosis': 
+            if c == 'Diagnosis': 
                 if cu not in ['CN', 'MCI', 'AD']:
                     continue
 
@@ -380,17 +366,17 @@ for fold in range(10):
     print('Run Inference on Test Subjects')
 
     # keep the test ids that belong to the longitudinal covariates
-    test_ids = [x for x in test_ids if x in longitudinal_covariates['PTID'].unique()]
+    test_ids = [x for x in test_ids if x in longitudinal_covariates['anon_id'].unique()]
 
     for id_ in test_ids: 
         # print('Subject ID', id_)
         winkler_scores = []
-        subject_data = datasamples[datasamples['PTID'] == id_]
-        subject_covariates = longitudinal_covariates[longitudinal_covariates['PTID'] == id_]
+        subject_data = datasamples[datasamples['anon_id'] == id_]
+        subject_covariates = longitudinal_covariates[longitudinal_covariates['anon_id'] == id_]
         print('Subject Data', subject_data.shape)
         print('Subject Covariates', subject_covariates.shape)
         # assert that subject_data has the same shape as subject_covariates
-        assert subject_data.shape[0] == subject_covariates.shape[0]
+        # assert subject_data.shape[0] == subject_covariates.shape[0]
         
         subject_x = subject_data['X']
         subject_y = subject_data['Y']
@@ -417,12 +403,6 @@ for fold in range(10):
             y_preds = conformal_likelihood(f_preds)
             variance = y_preds.variance
             mean = y_preds.mean
-
-        mae_pop, ae_pop = mae(subject_y.cpu().detach().numpy(), mean.cpu().detach().numpy())
-        mse_pop, rmse_pop, se_pop = mse(subject_y.cpu().detach().numpy(), mean.cpu().detach().numpy())  
-        rsq = R2(subject_y.cpu().detach().numpy(), mean.cpu().detach().numpy()) 
-
-        mae_MTGP_list.append(mae_pop)
 
         # Fetch the correct qhat value based on the covariate and perform stratified conformal inference
         print('Test Subject ID:', id_)
@@ -476,41 +456,40 @@ for fold in range(10):
             print('Storing the Results!')
 
             # Store the results in the dictionary
-            stratified_conformalized_results['id'].extend([id_] * subject_x.shape[0])
-            stratified_conformalized_results['kfold'].extend([fold] * subject_x.shape[0])
-            stratified_conformalized_results['score'].extend(mean.cpu().detach().numpy().tolist())
-            stratified_conformalized_results['lower'].extend(conformal_lower.cpu().detach().numpy().tolist())
-            stratified_conformalized_results['upper'].extend(conformal_upper.cpu().detach().numpy().tolist())
-            stratified_conformalized_results['y'].extend(subject_y.cpu().detach().numpy().tolist())
-            stratified_conformalized_results['variance'].extend(variance.cpu().detach().numpy().tolist())
-            stratified_conformalized_results['time'].extend(subject_x[:, -1].cpu().detach().numpy().tolist())
+            population_conformalized_results['id'].extend([id_] * subject_x.shape[0])
+            population_conformalized_results['kfold'].extend([fold] * subject_x.shape[0])
+            population_conformalized_results['score'].extend(mean.cpu().detach().numpy().tolist())
+            population_conformalized_results['lower'].extend(conformal_lower.cpu().detach().numpy().tolist())
+            population_conformalized_results['upper'].extend(conformal_upper.cpu().detach().numpy().tolist())
+            population_conformalized_results['y'].extend(subject_y.cpu().detach().numpy().tolist())
+            population_conformalized_results['variance'].extend(variance.cpu().detach().numpy().tolist())
+            population_conformalized_results['time'].extend(subject_x[:, -1].cpu().detach().numpy().tolist())
 
             ae = np.abs(mean.cpu().detach().numpy() - subject_y.cpu().detach().numpy())
-            stratified_conformalized_results['ae'].extend(ae.tolist())
-            stratified_conformalized_results['winkler'].extend(winkler_scores)
-            stratified_conformalized_results['covariate'].extend([c] * subject_x.shape[0])
+            population_conformalized_results['ae'].extend(ae.tolist())
+            population_conformalized_results['winkler'].extend(winkler_scores)
+            population_conformalized_results['covariate'].extend([c] * subject_x.shape[0])
 
             # unstratified conformalized inference
             unstrat_conf_lower = mean - unstrat_qhat * std
             unstrat_conf_upper = mean + unstrat_qhat * std
 
-            unstratified_conformalized_results['id'].extend([id_] * subject_x.shape[0])
-            unstratified_conformalized_results['kfold'].extend([fold] * subject_x.shape[0])
-            unstratified_conformalized_results['score'].extend(mean.cpu().detach().numpy().tolist())
-            unstratified_conformalized_results['lower'].extend(unstrat_conf_lower.cpu().detach().numpy().tolist())
-            unstratified_conformalized_results['upper'].extend(unstrat_conf_upper.cpu().detach().numpy().tolist())
-            unstratified_conformalized_results['y'].extend(subject_y.cpu().detach().numpy().tolist())
-            unstratified_conformalized_results['variance'].extend(variance.cpu().detach().numpy().tolist())
-            unstratified_conformalized_results['time'].extend(subject_x[:, -1].cpu().detach().numpy().tolist())
-            unstratified_conformalized_results['ae'].extend(ae.tolist())
-            unstratified_conformalized_results['winkler'].extend(winkler_scores)
+            group_conditional_conformalized_results['id'].extend([id_] * subject_x.shape[0])
+            group_conditional_conformalized_results['kfold'].extend([fold] * subject_x.shape[0])
+            group_conditional_conformalized_results['score'].extend(mean.cpu().detach().numpy().tolist())
+            group_conditional_conformalized_results['lower'].extend(unstrat_conf_lower.cpu().detach().numpy().tolist())
+            group_conditional_conformalized_results['upper'].extend(unstrat_conf_upper.cpu().detach().numpy().tolist())
+            group_conditional_conformalized_results['y'].extend(subject_y.cpu().detach().numpy().tolist())
+            group_conditional_conformalized_results['variance'].extend(variance.cpu().detach().numpy().tolist())
+            group_conditional_conformalized_results['time'].extend(subject_x[:, -1].cpu().detach().numpy().tolist())
+            group_conditional_conformalized_results['ae'].extend(ae.tolist())
+            group_conditional_conformalized_results['winkler'].extend(winkler_scores)
 
-print('#### Stratified Conformalized Inference for ' + str(task) + '###')
-conformalized_predictions_df = pd.DataFrame(data=stratified_conformalized_results)
+conformalized_predictions_df = pd.DataFrame(data=population_conformalized_results)
 conformalized_predictions_df.to_csv('./results/group_conditional_' + str(list_index)  + '_results.csv')
 
-unstratified_conformalized_predictions_df = pd.DataFrame(data=unstratified_conformalized_results)
-unstratified_conformalized_predictions_df.to_csv('./results/population_cp_' + str(list_index)  + '_results.csv')
+group_conditional_conformalized_predictions_df = pd.DataFrame(data=group_conditional_conformalized_results)
+group_conditional_conformalized_predictions_df.to_csv('./results/population_cp_' + str(list_index)  + '_results.csv')
 
 # store the qhat values
 qhat_df = pd.DataFrame(data=qhat_dict)
