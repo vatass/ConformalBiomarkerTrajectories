@@ -1,10 +1,6 @@
 '''
 Conformal Prediction for Randomly-Timed Biomarker Trajectories with Bootstrap predictor
 '''
-
-'''
-Bootstrap as Baseline for UQ
-'''
 import numpy as np 
 import torch
 import torch.nn.functional as F
@@ -83,7 +79,7 @@ def train_bootstrap_ensemble(train_x, train_y, num_models, input_dim, epochs, le
 def predict_and_update_results_per_subject(
     models,  # List of models from bootstrap training
     test_x, test_y, test_ids, test_time, kfold,
-    population_results, population_mae_kfold, population_metrics_per_subject, alpha, z, gpuid=-1
+    population_results, alpha, z, gpuid=-1
 ):
     device = torch.device(f"cuda:{gpuid}" if gpuid >= 0 and torch.cuda.is_available() else "cpu")
     test_x = test_x.to(device)
@@ -131,12 +127,6 @@ def predict_and_update_results_per_subject(
         mae = mean_absolute_error(subject_y_np, mean_preds)
         interval_size = np.mean(upper_bounds - lower_bounds)
 
-        # Update subject metrics
-        population_metrics_per_subject['id'].append(subject_id)
-        population_metrics_per_subject['status'].append(coverage)
-        population_metrics_per_subject['mae'].append(mae)
-        population_metrics_per_subject['observations'].append(len(subject_y))
-
         # Calculate the Winkler score
         winkler_scores = []
         winkler_score = 0
@@ -175,15 +165,6 @@ def predict_and_update_results_per_subject(
     mean_preds_all = np.concatenate(all_mean_preds)
     assert mean_preds_all.shape[0] == test_y.shape[0], "Mismatch between test_y and predictions"
 
-    # Compute overall fold metrics
-    population_mae_kfold['kfold'].append(kfold)
-    population_mae_kfold['mae'].append(np.mean(ae_list))
-    population_mae_kfold['mse'].append(mean_squared_error(test_y.cpu().numpy(), mean_preds_all))
-    population_mae_kfold['rmse'].append(np.sqrt(mean_squared_error(test_y.cpu().numpy(), mean_preds_all)))
-    population_mae_kfold['r2'].append(r2_score(test_y.cpu().numpy(), mean_preds_all))
-    population_mae_kfold['interval'].append(np.mean(uncertainty_list))
-    population_mae_kfold['coverage'].append(np.mean(population_metrics_per_subject['status']))
-
 def bootstrap_predictions(models, test_x, gpuid):
     device = torch.device(f"cuda:{gpuid}" if gpuid >= 0 and torch.cuda.is_available() else "cpu")
     test_x = test_x.to(device)
@@ -203,45 +184,23 @@ def compute_uncertainty(predictions):
     return mean_preds, epistemic_uncertainty
 
 parser = argparse.ArgumentParser(description='Bootstrap Deep Regression')
-## Data Parameters 
 parser.add_argument("--gpuid", help="GPUs", default=0)
-parser.add_argument("--experimentID", help="Indicates the Experiment Identifier", default='adniblsa') 
-parser.add_argument("--file", help="Identifier for the data", default="conformal_longitudinal_adniblsa_data.csv")
-
-## Training and Data Parameters
-parser.add_argument("--iterations", help="Epochs", default=200)
-parser.add_argument("--optimizer", help='Optimizer', default='adam')
-parser.add_argument("--learning_rate", help='Learning Rate', type=float, default=0.02)    # 0.01844 is in hmuse rois 
-parser.add_argument("--roi_idx", type=int, default=14)
-
+parser.add_argument("--file", help="Identifier for the data", default="./data/data.csv")
+parser.add_argument("--biomarker_idx", type=int, default=14)
 ## Conformal Prediction Parameters 
 parser.add_argument("--alpha", help='Significance Level', type=float, default=0.1)
 parser.add_argument("--calibrationset", help='Size of the Calibration Set', type=float, default=0.04)
 
 population_results = {'id': [], 'kfold': [], 'score': [], 'lower': [], 'upper': [], 'variance': [], 'y': [], 'time': [], 'ae': [], 'winkler': [] }
-population_mae_kfold = {'kfold': [], 'mae': [], 'mse': [], 'rmse': [], 'r2': [], 'interval': [], 'coverage': []}
-population_metrics_per_subject = {'id': [], 'status': [], 'mae': [], 'observations': []}
-
 conformal_results = {'id': [], 'kfold': [], 'score': [], 'lower': [], 'upper': [], 'variance': [], 'y': [], 'time': [], 'ae': [], 'winkler': [], 'study':[] }
-conformal_mtv_results = {'id': [], 'kfold': [], 'score': [], 'lower': [], 'upper': [], 'variance': [], 'y': [], 'time': [], 'ae': [], 'winkler': [], 'study':[] }   
 
-external_results = {'id': [], 'kfold': [], 'score': [], 'lower': [], 'upper': [], 'variance': [], 'y': [], 'time': [], 'ae': [], 'study': [], 'winkler': []}
-external_conf_results = {'id': [], 'kfold': [], 'score': [], 'lower': [], 'upper': [], 'variance': [], 'y': [], 'time': [], 'ae': [], 'study': [], 'winkler': []}
-external_conf_mtv_results = {'id': [], 'kfold': [], 'score': [], 'lower': [], 'upper': [], 'variance': [], 'y': [], 'time': [], 'ae': [], 'study': [], 'winkler': []}
-
-qhat_dict = {'qhat': [], 'calibration_set_size': [], 'fold': [], 'qhat_mvt': [], 'mtr': [] }
+qhat_dict = {'qhat': [], 'calibration_set_size': [], 'fold': [] }
 
 t0= time.time()
 args = parser.parse_args()
 gpuid = int(args.gpuid)
-expID = args.experimentID
 file = args.file
-
-iterations = args.iterations
-optimizer = args.optimizer
-learning_rate = args.learning_rate
-task = "MUSE"
-roi_idx = args.roi_idx
+biomarker_idx = args.biomarker_idx
 alpha = float(args.alpha)
 calibrationset = args.calibrationset
 
@@ -253,32 +212,21 @@ elif alpha == 0.01:
     z = 2.576
     
 datasamples = pd.read_csv(file)
-longitudinal_covariates = pd.read_csv('longitudinal_covariates_conformal.csv')
-print(longitudinal_covariates['Diagnosis'].unique())
-# 0: CN, 1: MCI, 2: AD, -1: UKN
-# map the diagnosis to integers
-diagnosis_map = {0: 'CN', 1: 'MCI', 2: 'AD', -1: 'UKN'}
-longitudinal_covariates['Diagnosis'] = longitudinal_covariates['Diagnosis'].map(diagnosis_map)
 
-f = open('../LongGPClustering/roi_to_idx.json')
-roi_to_idx = json.load(f)
+list_index = biomarker_idx
 
-index_to_roi = {v: k for k, v in roi_to_idx.items()}
-list_index = roi_idx
-# roi_idx is the index list from 0 to 144 
-print(task, roi_idx)
 for fold in range(10): 
     print('FOLD::', fold)
     train_ids, test_ids = [], []     
 
-    with (open("conformal_train_adniblsa_subjects_fold_" + str(fold) +  ".pkl", "rb")) as openfile:
+    with (open("./data/folds/fold_" + str(fold) +  "_train.pkl", "rb")) as openfile:
         while True:
             try:
                 train_ids.append(pickle.load(openfile))
             except EOFError:
                 break 
       
-    with (open("conformal_test_adniblsa_subjects_fold_" + str(fold) + ".pkl", "rb")) as openfile:
+    with (open("./data/folds/fold_" + str(fold) +  "_test.pkl", "rb")) as openfile:
         while True:
             try:
                 test_ids.append(pickle.load(openfile))
@@ -297,13 +245,13 @@ for fold in range(10):
             raise ValueError('Test Samples belong to the train!')
 
     ### SET UP THE TRAIN/TEST DATA FOR THE MULTITASK GP### 
-    train_x = datasamples[datasamples['PTID'].isin(train_ids)]['X']
-    train_y = datasamples[datasamples['PTID'].isin(train_ids)]['Y']    
-    test_x = datasamples[datasamples['PTID'].isin(test_ids)]['X']
-    test_y = datasamples[datasamples['PTID'].isin(test_ids)]['Y']
+    train_x = datasamples[datasamples['anon_id'].isin(train_ids)]['X']
+    train_y = datasamples[datasamples['anon_id'].isin(train_ids)]['Y']    
+    test_x = datasamples[datasamples['anon_id'].isin(test_ids)]['X']
+    test_y = datasamples[datasamples['anon_id'].isin(test_ids)]['Y']
 
-    corresponding_test_ids = datasamples[datasamples['PTID'].isin(test_ids)]['PTID'].to_list()
-    corresponding_train_ids = datasamples[datasamples['PTID'].isin(train_ids)]['PTID'].to_list() 
+    corresponding_test_ids = datasamples[datasamples['anon_id'].isin(test_ids)]['anon_id'].to_list()
+    corresponding_train_ids = datasamples[datasamples['anon_id'].isin(train_ids)]['anon_id'].to_list() 
     assert len(corresponding_test_ids) == test_x.shape[0]
     assert len(corresponding_train_ids) == train_x.shape[0]
 
@@ -321,13 +269,6 @@ for fold in range(10):
     print('Train Time', len(time_))
     print('Train Subjectes', len(corresponding_train_ids))
 
-    if task == 'MUSE':
-        list_index = roi_idx
-    elif task == 'SPARE_AD':
-        list_index = 0
-    elif task == 'SPARE_BA':
-        list_index =1
-
     test_y = test_y[:, list_index]
     train_y = train_y[:, list_index]
 
@@ -337,8 +278,8 @@ for fold in range(10):
     #### Define the Bootstrap Regressor ####
     input_dim = train_x.shape[1]
     num_models = 10  # Number of bootstrap models
-    epochs = args.iterations
-    learning_rate = args.learning_rate
+    epochs = 50
+    learning_rate = 0.01
 
     models = train_bootstrap_ensemble(
     train_x=train_x,
@@ -365,8 +306,6 @@ for fold in range(10):
         test_time=test_time,
         kfold=0,  # Assuming this is fold 0
         population_results=population_results,
-        population_mae_kfold=population_mae_kfold,
-        population_metrics_per_subject=population_metrics_per_subject,
         z=z,
         alpha=alpha,
         gpuid=gpuid
@@ -391,14 +330,14 @@ for fold in range(10):
             raise ValueError('Calibration samples belong to the train!')
 
     # Extract training and calibration data
-    train_x = datasamples[datasamples['PTID'].isin(train_ids)]['X']
-    train_y = datasamples[datasamples['PTID'].isin(train_ids)]['Y']
-    calibration_x = datasamples[datasamples['PTID'].isin(calibration_ids)]['X']
-    calibration_y = datasamples[datasamples['PTID'].isin(calibration_ids)]['Y']
+    train_x = datasamples[datasamples['anon_id'].isin(train_ids)]['X']
+    train_y = datasamples[datasamples['anon_id'].isin(train_ids)]['Y']
+    calibration_x = datasamples[datasamples['anon_id'].isin(calibration_ids)]['X']
+    calibration_y = datasamples[datasamples['anon_id'].isin(calibration_ids)]['Y']
 
     # Convert IDs to lists for processing
-    corresponding_train_ids = datasamples[datasamples['PTID'].isin(train_ids)]['PTID'].to_list()
-    corresponding_calibration_ids = datasamples[datasamples['PTID'].isin(calibration_ids)]['PTID'].to_list()
+    corresponding_train_ids = datasamples[datasamples['anon_id'].isin(train_ids)]['anon_id'].to_list()
+    corresponding_calibration_ids = datasamples[datasamples['anon_id'].isin(calibration_ids)]['anon_id'].to_list()
 
     # Check consistency of data shapes
     assert len(corresponding_train_ids) == train_x.shape[0], "Mismatch in train IDs and train data"
@@ -441,24 +380,6 @@ for fold in range(10):
     )
     print("Bootstrap training completed.")
 
-    print('Calculate the Max Train Residual')
-    train_residuals = []
-    for i in range(len(corresponding_train_ids)):
-        y_true = train_y[i].item()
-        residual_list = []
-        for model in bootstrap_conf_models:
-            model.eval()
-            with torch.no_grad():
-                pred = model(train_x[i].unsqueeze(0)).cpu().numpy()
-
-                residuals = abs(pred - y_true)[0][0]
-
-                residual_list.append(residuals)
-
-    max_train_residual = max(residual_list)
-    print('Max Train Residual', max_train_residual)
-
-    qhat_dict['mtr'].append(max_train_residual)
 
     # Perform inference on calibration dataset
     calibration_time = np.array(calibration_x[:, -1].cpu().detach().numpy())  # Extract time
@@ -493,7 +414,7 @@ for fold in range(10):
     calibration_results_df = pd.DataFrame(data=calibration_results)
 
     print('Calculate the Non-Conformity Scores')
-    conformity_scores_per_subject = {'id': [], 'conformal_scores': [], 'nonnorm_conformal_scores': [], 'conformal_score_mtv': []}
+    conformity_scores_per_subject = {'id': [], 'conformal_scores': []}
     for subject in calibration_results_df['id'].unique():
         subject_df = calibration_results_df[calibration_results_df['id'] == subject]
 
@@ -501,11 +422,8 @@ for fold in range(10):
 
         conformal_scores = np.abs(subject_df['score'] - subject_df['y'])/std #
         nonnorm = np.abs(subject_df['score'] - subject_df['y'])
-        conformal_scores_mtv = np.abs(subject_df['score'] - subject_df['y'])/max_train_residual
         conformity_scores_per_subject['id'].append(subject)
         conformity_scores_per_subject['conformal_scores'].append(np.max(conformal_scores))
-        conformity_scores_per_subject['nonnorm_conformal_scores'].append(np.max(nonnorm))
-        conformity_scores_per_subject['conformal_score_mtv'].append(np.max(conformal_scores_mtv))
 
     conformity_scores_per_subject_df = pd.DataFrame(data=conformity_scores_per_subject)
     conformity_scores_per_subject_df.to_csv('conformal_scores_fold_' + str(fold) + '.csv', index=False)
@@ -531,32 +449,6 @@ for fold in range(10):
     qhat_dict['qhat'].append(qhat)
     qhat_dict['calibration_set_size'].append(len(calibration_results_df['id'].unique()))
     qhat_dict['fold'].append(fold)
-
-    #### Calculate the non-normalized non-conformity scores ####
-    nonnorm_conformity_scores = np.array(conformity_scores_per_subject['nonnorm_conformal_scores'])
-    sorted_nonnorm_conformity_scores = np.sort(nonnorm_conformity_scores)
-    # n is the number of the validation subjects
-    n = nonnorm_conformity_scores.shape[0]
-    # alpha is the user-chosen error rate. In w ords, the probability that the prediction set contains the correct label is almost exactly 
-    k = int(np.ceil((n + 1) * (1 - conformal_alpha)))
-    # Ensure k does not exceed n
-    k = min(k, n)
-    # Get the (n - k + 1)-th smallest value since we want the k-th largest value
-    qhat_nonnorm = sorted_nonnorm_conformity_scores[k-1]
-
-    # Calculate the qhat_mtv
-    conformal_scores_mtv = np.array(conformity_scores_per_subject['conformal_score_mtv'])
-    sorted_conformal_scores_mtv = np.sort(conformal_scores_mtv)
-    # n is the number of the validation subjects
-    n = conformal_scores_mtv.shape[0]
-    # alpha is the user-chosen error rate. In w ords, the probability that the prediction set contains the correct label is almost exactly
-    k = int(np.ceil((n + 1) * (1 - conformal_alpha)))
-    # Ensure k does not exceed n
-    k = min(k, n)
-    # Get the (n - k + 1)-th smallest value since we want the k-th largest value
-    qhat_mtv = sorted_conformal_scores_mtv[k-1]
-
-    qhat_dict['qhat_mvt'].append(qhat_mtv)
 
     print('Test the Conformalized Bootstrap Deep Regressor')
     # Prepare test data
@@ -600,224 +492,16 @@ for fold in range(10):
 
     conformal_results['study'].extend(['adniblsa'] * len(test_ids))  # Add study name
 
-    # perform inference with the qhat mtv
-    print("Performing conformalized inference on test set with qhat_mtv...")
-    predictions = bootstrap_predictions(models=bootstrap_conf_models, test_x=test_x, gpuid=gpuid)
-    mean_preds, epistemic_uncertainty = compute_uncertainty(predictions)
-
-    # New and Correct Implementation 
-    lower_bounds = mean_preds - qhat_mtv * max_train_residual
-    upper_bounds = mean_preds + qhat_mtv * max_train_residual
-
-    # Update results for each test subject
-    for i, subject_id in enumerate(test_ids):
-
-        conformal_mtv_results['id'].append(subject_id)
-        conformal_mtv_results['kfold'].append(fold)
-        conformal_mtv_results['score'].append(mean_preds[i][0])
-        conformal_mtv_results['lower'].append(lower_bounds[i][0])
-        conformal_mtv_results['upper'].append(upper_bounds[i][0])
-        conformal_mtv_results['variance'].append(epistemic_uncertainty[i][0])
-        conformal_mtv_results['y'].append(test_y[i].item())
-        conformal_mtv_results['time'].append(test_time[i])
-        ae = abs(test_y[i].item() - mean_preds[i][0])
-        conformal_mtv_results['ae'].append(ae)
-
-        # Compute Winkler scores for conformal intervals
-        y_true = test_y[i].item()
-        l = lower_bounds[i][0]
-        u = upper_bounds[i][0]
-        if l <= y_true <= u:
-            winkler_score = u - l
-
-        elif y_true < l:
-            winkler_score = (u - l) + (2 / alpha) * (l - y_true)
-        else:  # y_true > u
-            winkler_score = (u - l) + (2 / alpha) * (y_true - u)
-        conformal_mtv_results['winkler'].append(winkler_score)
-
-    conformal_mtv_results['study'].extend(['adniblsa'] * len(test_ids))  # Add study name
-
-    print('Run Inference on External Clinical Studies')
-    external_studies = ['oasis', 'penn', 'aibl', 'preventad', 'wrap', 'cardia']
-
-    for study in external_studies:
-        print('Study:', study)
-        # Load external data
-        if task.startswith('SPARE'):
-            external_data = pd.read_csv('conformal_longitudinal_spare_' + study + '.csv')
-        else:
-            external_data = pd.read_csv('conformal_longitudinal_' + study + '_data.csv')
-        
-        external_study_ids = external_data['PTID'].unique()
-        data_covariates = pd.read_csv(f'longitudinal_covariates_{study}_conformal.csv')
-
-        # Extract test features and labels
-        test_x = external_data[external_data['PTID'].isin(external_study_ids)]['X']
-        test_y = external_data[external_data['PTID'].isin(external_study_ids)]['Y']
-        corresponding_test_ids = external_data[external_data['PTID'].isin(external_study_ids)]['PTID'].to_list()
-
-        # Process the data for temporal tasks
-        test_x, test_y, test_x, test_y = process_temporal_singletask_data(
-            train_x=test_x, train_y=test_y, test_x=test_x, test_y=test_y
-        )
-
-        # Move data to GPU if available
-        if torch.cuda.is_available():
-            test_x, test_y = test_x.cuda(gpuid), test_y.cuda(gpuid)
-
-        # Prepare test IDs and time
-        test_ids = [str(i) for i in corresponding_test_ids]
-        test_time = np.array(test_x[:, -1].cpu().detach().numpy())  # Extract time
-
-        # Prepare target labels for specific ROI
-        test_y = test_y[:, list_index].squeeze()
-
-        print('Test the Bootstrap Conformalized Deep Regressor')
-
-        print("Performing conformalized inference on external study...")
-        # Use the ensemble of bootstrap models to make predictions
-        predictions = bootstrap_predictions(models=bootstrap_conf_models, test_x=test_x, gpuid=gpuid)
-        mean_preds, epistemic_uncertainty = compute_uncertainty(predictions)
-
-        # Compute conformal prediction intervals using qhat
-        lower_bounds = mean_preds - qhat * np.sqrt(epistemic_uncertainty)
-        upper_bounds = mean_preds + qhat * np.sqrt(epistemic_uncertainty)
-
-        # Update results for each subject in the external study
-        for i, subject_id in enumerate(test_ids):
-            external_conf_results['id'].append(subject_id)
-            external_conf_results['kfold'].append(fold)
-            external_conf_results['score'].append(mean_preds[i][0])
-            external_conf_results['lower'].append(lower_bounds[i][0])
-            external_conf_results['upper'].append(upper_bounds[i][0])
-            external_conf_results['variance'].append(epistemic_uncertainty[i][0])
-            external_conf_results['y'].append(test_y[i].item())
-            external_conf_results['time'].append(test_time[i])
-            ae = abs(test_y[i].item() - mean_preds[i][0])
-            external_conf_results['ae'].append(ae)
-
-            # Compute Winkler scores for conformal intervals
-            y_true = test_y[i].item()
-            l = lower_bounds[i][0]
-            u = upper_bounds[i][0]
-            if l <= y_true <= u:
-                winkler_score = u - l  # Width of interval
-            elif y_true < l:
-                winkler_score = (u - l) + (2 / alpha) * (l - y_true)  # Penalty for underprediction
-            else:  # y_true > u
-                winkler_score = (u - l) + (2 / alpha) * (y_true - u)  # Penalty for overprediction
-            external_conf_results['winkler'].append(winkler_score)
-
-        external_conf_results['study'].extend([study] * len(test_ids))  # Add study name
-
-        print('Perform Inference with the Bootstrap Deep Regressor')
-         # Use the ensemble of bootstrap models to make predictions
-        predictions = bootstrap_predictions(models=models, test_x=test_x, gpuid=gpuid)
-        mean_preds, epistemic_uncertainty = compute_uncertainty(predictions)
-
-        # Compute conformal prediction intervals using qhat
-        lower_bounds = mean_preds - z * np.sqrt(epistemic_uncertainty)
-        upper_bounds = mean_preds + z * np.sqrt(epistemic_uncertainty)
-
-        # Update results for each subject in the external study
-        for i, subject_id in enumerate(test_ids):
-            external_results['id'].append(subject_id)
-            external_results['kfold'].append(fold)
-            external_results['score'].append(mean_preds[i][0])
-            external_results['lower'].append(lower_bounds[i][0])
-            external_results['upper'].append(upper_bounds[i][0])
-            external_results['variance'].append(epistemic_uncertainty[i][0])
-            external_results['y'].append(test_y[i].item())
-            external_results['time'].append(test_time[i])
-            ae = abs(test_y[i].item() - mean_preds[i][0])
-            external_results['ae'].append(ae)
-
-            # Compute Winkler scores for conformal intervals
-            y_true = test_y[i].item()
-            l = lower_bounds[i][0]
-            u = upper_bounds[i][0]
-            if l <= y_true <= u:
-                winkler_score = u - l  # Width of interval
-            elif y_true < l:
-                winkler_score = (u - l) + (2 / alpha) * (l - y_true)  # Penalty for underprediction
-            else:  # y_true > u
-                winkler_score = (u - l) + (2 / alpha) * (y_true - u)  # Penalty for overprediction
-            external_results['winkler'].append(winkler_score)
-
-        external_results['study'].extend([study] * len(test_ids))  # Add study name
-
-        # Inference with the MTV
-        print("Performing conformalized inference on external study with qhat_mtv...")
-        # Use the ensemble of bootstrap models to make predictions
-        predictions = bootstrap_predictions(models=bootstrap_conf_models, test_x=test_x, gpuid=gpuid)
-        mean_preds, epistemic_uncertainty = compute_uncertainty(predictions)
-
-        # NEW 
-        lower_bounds = mean_preds - qhat_mtv * max_train_residual
-        upper_bounds = mean_preds + qhat_mtv * max_train_residual
-
-        # Update results for each subject in the external study
-        for i, subject_id in enumerate(test_ids):
-            external_conf_mtv_results['id'].append(subject_id)
-            external_conf_mtv_results['kfold'].append(fold)
-            external_conf_mtv_results['score'].append(mean_preds[i][0])
-            external_conf_mtv_results['lower'].append(lower_bounds[i][0])
-            external_conf_mtv_results['upper'].append(upper_bounds[i][0])
-            external_conf_mtv_results['variance'].append(epistemic_uncertainty[i][0])
-            external_conf_mtv_results['y'].append(test_y[i].item())
-            external_conf_mtv_results['time'].append(test_time[i])
-            ae = abs(test_y[i].item() - mean_preds[i][0])
-            external_conf_mtv_results['ae'].append(ae)
-
-            # Compute Winkler scores for conformal intervals
-            y_true = test_y[i].item()
-            l = lower_bounds[i][0]
-            u = upper_bounds[i][0]
-            if l <= y_true <= u:
-                winkler_score = u - l
-            elif y_true < l:
-                winkler_score = (u - l) + (2 / alpha) * (l - y_true)
-            else:  # y_true > u
-                winkler_score = (u - l) + (2 / alpha) * (y_true - u)
-            external_conf_mtv_results['winkler'].append(winkler_score)
-
-        external_conf_mtv_results['study'].extend([study] * len(test_ids))  # Add study name
-
-print('Inference on all external studies completed.')
-print('Fold', fold, 'completed')
-print('Time taken', time.time()-t0)
-expID = task + '_' + str(list_index) + '_alpha_' + str(alpha) + '_calibrationset_' + str(calibrationset)
-#  MUSE_17_alpha_0.1_calibrationset_0.04
-# SPARE_AD_0_alpha_0.1_calibrationset_0.04
-
-for k, v in conformal_mtv_results.items():
-    print(k, len(v), type(v))
 
 # Convert dictionaries to DataFrames
 population_results_df = pd.DataFrame(population_results)
 conformal_results_df = pd.DataFrame(conformal_results)
-conformal_mtv_results_df = pd.DataFrame(conformal_mtv_results)
-external_results_df = pd.DataFrame(external_results)
-external_conf_results_df = pd.DataFrame(external_conf_results)
-external_conf_mtv_results_df = pd.DataFrame(external_conf_mtv_results)
-
-population_mae_kfold_df = pd.DataFrame(population_mae_kfold)
-population_metrics_per_subject_df = pd.DataFrame(population_metrics_per_subject)
 
 # Save results to CSV
 qhat_df = pd.DataFrame(data=qhat_dict)
-qhat_df.to_csv("./conformalresults/qhat_bootstrap_"+str(expID)+".csv", index=False)
-population_results_df.to_csv("./conformalresults/deep_regression_bootstrap_results_"+str(expID)+".csv", index=False)
-conformal_results_df.to_csv("./conformalresults/deep_regression_bootstrap_conformal_results_"+str(expID)+".csv", index=False)
-conformal_mtv_results_df.to_csv("./conformalresults/deep_regression_bootstrap_conformal_mtv_results_"+str(expID)+".csv", index=False)
-
-external_results_df.to_csv("./conformalresults/deep_regression_bootstrap_external_results_"+str(expID)+".csv", index=False)
-external_conf_results_df.to_csv("./conformalresults/deep_regression_bootstrap_external_conf_results_"+str(expID)+".csv", index=False)
-external_conf_mtv_results_df.to_csv("./conformalresults/deep_regression_bootstrap_external_conf_mtv_results_"+str(expID)+".csv", index=False)
-
-population_mae_kfold_df.to_csv("./conformalresults/deep_regression_bootstrap_mae_kfold_"+str(expID)+".csv", index=False)
-population_metrics_per_subject_df.to_csv("./conformalresults/deep_regression_bootstrap_metrics_per_subject"+str(expID)+".csv", index=False)
+qhat_df.to_csv("./results/qhat_bootstrap_"+str(biomarker_idx)+".csv", index=False)
+population_results_df.to_csv("./results/deep_regression_bootstrap_"+str(biomarker_idx)+"_results.csv", index=False)
+conformal_results_df.to_csv("./results/conformalized_deep_regression_bootstrap_"+str(biomarker_idx)+"_results.csv", index=False)
 
 def calculate_subject_level_metrics(df):
     df['interval_width'] = df['upper'] - df['lower']
@@ -842,11 +526,8 @@ def calculate_fold_metrics(results, method_name):
 
 dqr_results = calculate_subject_level_metrics(population_results_df)
 dqr_conformalized_results = calculate_subject_level_metrics(conformal_results_df)
-dqr_mvt_conformalized_results = calculate_subject_level_metrics(conformal_mtv_results_df)
 
 print('Bootstrap Results')
 print(dqr_results.head())
 print('Bootstrap Conformalized Results')
 print(dqr_conformalized_results.head())
-print('Bootstrap MVT Conformalized Results')
-print(dqr_mvt_conformalized_results.head())
