@@ -17,7 +17,6 @@ import torch
 import gpytorch
 
 import matplotlib.pyplot as plt
-import seaborn as sns
 from tqdm import tqdm
 
 from functions import process_temporal_singletask_data

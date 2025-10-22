@@ -17,7 +17,6 @@ import torch
 import gpytorch
 
 import matplotlib.pyplot as plt
-import seaborn as sns
 from tqdm import tqdm
 
 from functions import process_temporal_singletask_data
@@ -35,8 +34,6 @@ if torch.cuda.is_available():
     torch.cuda.manual_seed(seed)
     torch.cuda.manual_seed_all(seed) 
 ##################################
-
-sns.set_style("white", {'axes.grid' : False})
 
 parser = argparse.ArgumentParser(description='Temporal Deep Kernel Single Task GP model for a single Biomarker')
 parser.add_argument("--gpuid", help="GPUs", default=0)

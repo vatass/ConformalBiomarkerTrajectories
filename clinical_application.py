@@ -236,11 +236,6 @@ all_metrics = []
 for method, path in file_paths.items():
     df = pd.read_csv(path)
 
-    print(df.head())
-    
-    for c in df.columns:
-        print(c)
-    
     df = df.dropna(subset=["converter"])
     df = df[df["converter"] != -1]
 
@@ -261,8 +256,5 @@ df_all_metrics = pd.DataFrame(all_metrics)
 
 # remove the ROC_Curve_Data and PR_Curve_Data columns
 df_all_metrics = df_all_metrics.drop(columns=["ROC_Curve_Data", "PR_Curve_Data"])
-
-for key, value in df_all_metrics.items():
-    print(key, type(value))
 
 print(df_all_metrics[['Method', 'Optimal Threshold (Youden\'s J)', 'Precision (Optimal)', 'Recall/Sensitivity (Optimal)', 'F1 Score (Optimal)']])

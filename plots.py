@@ -11,6 +11,8 @@ import json
 import os 
 import matplotlib.ticker as ticker
 import matplotlib.lines as mlines
+import matplotlib.cm as cm
+
 
 os.makedirs('./figures', exist_ok=True)
 
@@ -81,6 +83,13 @@ def calculate_subject_level_metrics_per_covariate(df):
     })).reset_index(drop=True)
     return grouped
 
+# Function to calculate confidence intervals
+def calculate_ci(data):
+    mean = data.mean()
+    std = data.std()
+    n = len(data)
+    ci = 1.96 * (std / np.sqrt(n))  # 95% confidence interval
+    return mean, ci
 
 # SHARED STYLE 
 plt.rcParams.update({
@@ -587,6 +596,11 @@ unstratified_interval_means, unstratified_interval_cis = [], []
 stratified_interval_means, stratified_interval_cis = [], []
 final_labels = []
 
+# Define focused covariates and values
+focused_covariates = {
+    'Diagnosis': ['AD', 'CN', 'MCI']
+}
+
 for covariate, values in focused_covariates.items():
     marker = marker_map.get(covariate, 'o')  # Default marker is 'o'
 
@@ -639,23 +653,10 @@ final_labels = []
 x_positions = []
 offset = 0
 
-import numpy as np
-import matplotlib.pyplot as plt
-
-# Function to calculate confidence intervals
-def calculate_ci(data):
-    mean = data.mean()
-    std = data.std()
-    n = len(data)
-    ci = 1.96 * (std / np.sqrt(n))  # 95% confidence interval
-    return mean, ci
-
 # Define marker shapes and colors for stratified and unstratified data
 colors = {'Group-Conditional Conformal Prediction': '#92140c', 'Population Conformal Prediction': '#111D4A'}
 
 marker_map = { 'Diagnosis': 'o' }
-
-
 # Desired order for x-tick labels, including spaces
 desired_order_with_spaces = [
         "CN", "MCI", "AD"
