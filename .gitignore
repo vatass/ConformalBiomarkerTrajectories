@@ -2,4 +2,6 @@ data/
 results/
 figures/
 *.csv
-*.pkl
+*.pklanonymize.py
+conformal_dkgp_epistemic.py
+group_conditional_dkgp_1.py
