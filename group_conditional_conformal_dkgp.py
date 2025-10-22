@@ -25,7 +25,7 @@ from models import SingleTaskDeepKernel
 
 ##### SET RANDOM SEED ####
 # Set random seeds
-seed = 42  
+seed = 123
 np.random.seed(seed)
 torch.manual_seed(seed)
 random.seed(seed)
@@ -45,7 +45,7 @@ parser = argparse.ArgumentParser(description='Temporal Deep Kernel Single Task G
 ## Data Parameters 
 parser.add_argument("--gpuid", help="GPUs", default=0)
 parser.add_argument("--file", help="Identifier for the data", default="./data/data.csv")
-parser.add_argument("--conformalsplitpercentage", help="Percentage of spliting Population/Calibration", default=0.2)
+parser.add_argument("--calibrationset", help="Percentage of spliting Population/Calibration", default=0.2)
 parser.add_argument("--alpha", help="Significance Level", default=0.1)
 parser.add_argument("--biomarker_idx", type=int, default=14)
 
@@ -56,7 +56,7 @@ gpuid = int(args.gpuid)
 file = args.file
 biomarker_idx = args.biomarker_idx
 alpha = float(args.alpha)  
-conformalsplitpercentage = args.conformalsplitpercentage
+calibrationset = args.calibrationset
 
 calibration_results = {'id': [], 'kfold': [], 'score': [], 'lower': [], 'upper': [], 'variance': [], 'y': [], 'time': [], 'ae': []}
 population_conformalized_results = {'id': [], 'kfold': [], 'score': [], 'lower': [], 'upper': [], 'variance': [], 'y': [], 'time': [], 'ae': [], 'winkler': [], 'covariate': [] }
@@ -81,7 +81,7 @@ valid_values = {
 list_index = biomarker_idx 
 
 for fold in range(10): 
-    print('FOLD::', fold)
+    # print('FOLD::', fold)
     train_ids, test_ids = [], []     
 
     with (open("./data/folds/fold_" + str(fold) +  "_train.pkl", "rb")) as openfile:
@@ -101,9 +101,9 @@ for fold in range(10):
     train_ids = train_ids[0]
     test_ids = test_ids[0]
 
-    print('Train the Deep Kernel Regressor')
-    print('Train IDs', len(train_ids))
-    print('Test IDs', len(test_ids))
+    # print('Train the Deep Kernel Regressor')
+    # print('Train IDs', len(train_ids))
+    # print('Test IDs', len(test_ids))
 
     for t in test_ids: 
         if t in train_ids: 
@@ -131,8 +131,8 @@ for fold in range(10):
     ### Check if there is negative time
     time_ = train_x[:, -1].cpu().detach().numpy().tolist()
 
-    print('Train Time', len(time_))
-    print('Train Subjectes', len(corresponding_train_ids))
+    # print('Train Time', len(time_))
+    # print('Train Subjectes', len(corresponding_train_ids))
 
     test_y = test_y[:, list_index]
     train_y = train_y[:, list_index]
@@ -140,17 +140,17 @@ for fold in range(10):
     train_y = train_y.squeeze() 
     test_y = test_y.squeeze()
 
-    print('Split the Train Data into Train and Calibration')
-    conformal_split_percentage = args.conformalsplitpercentage
+    # print('Split the Train Data into Train and Calibration')
+    calibrationset = args.calibrationset
     # convert to float
-    conformal_split_percentage = float(conformal_split_percentage)
+    calibrationset = float(calibrationset)
 
     # Random Seletion of Calibration Subjects!
-    calibration_ids = np.random.choice(train_ids, int(conformal_split_percentage*len(train_ids)), replace=False)
+    calibration_ids = np.random.choice(train_ids, int(calibrationset*len(train_ids)), replace=False)
     train_ids = [x for x in train_ids if x not in calibration_ids]
 
-    print('Train IDs', len(train_ids))
-    print('Calibration IDs', len(calibration_ids))
+    # print('Train IDs', len(train_ids))
+    # print('Calibration IDs', len(calibration_ids))
     for t in calibration_ids:
         if t in train_ids: 
             raise ValueError('Calibration Samples belong to the train!')
@@ -199,7 +199,7 @@ for fold in range(10):
         conformal_likelihood = conformal_likelihood.cuda(gpuid)
         conformal_deepkernelmodel = conformal_deepkernelmodel.cuda(gpuid)
 
-    training_iterations  =  50
+    training_iterations  =  100
 
     # set up train mode
     conformal_deepkernelmodel.feature_extractor.train()
@@ -217,7 +217,6 @@ for fold in range(10):
     # scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[10,20, 50, 70], gamma=0.1)
 
     train_loss, val_loss = [], []
-    training_iterations = 50
 
     for i in tqdm(range(training_iterations)):
         conformal_deepkernelmodel.train()
@@ -235,7 +234,7 @@ for fold in range(10):
     conformal_deepkernelmodel.eval()
     conformal_likelihood.eval()
 
-    print('Run Inference on Calibration Subjects')
+    # print('Run Inference on Calibration Subjects')
     for id_ in calibration_ids:
         # print('Subject ID', id_)
         subject_data = datasamples[datasamples['anon_id'] == id_]
@@ -283,7 +282,7 @@ for fold in range(10):
 
     calibration_results_df = pd.DataFrame(data=calibration_results)
 
-    print('Calculate the Non-Conformity Scores')
+    # print('Calculate the Non-Conformity Scores')
     conformity_scores_per_subject = {'id': [], 'conformal_scores': []}
     for subject in calibration_results_df['id'].unique():
         subject_df = calibration_results_df[calibration_results_df['id'] == subject]
@@ -297,7 +296,7 @@ for fold in range(10):
     conformity_scores_per_subject_df = pd.DataFrame(data=conformity_scores_per_subject)
     
     ### Calculate the Total Conformity Scores in the Unstratified Calibration Set ####
-    print('Store the Conformity Scores in the unstratified calibration set')
+    # print('Store the Conformity Scores in the unstratified calibration set')
     # gather all the conformity scores
     conformity_scores = np.array(conformity_scores_per_subject['conformal_scores'])
     sorted_conformity_scores = np.sort(conformity_scores)
@@ -313,14 +312,14 @@ for fold in range(10):
     k = min(k, n)
     # Get the (n - k + 1)-th smallest value since we want the k-th largest value
     unstrat_qhat = sorted_conformity_scores[k-1]
-    print('Qhat', unstrat_qhat)
-    print('Calibration Set Size',len(calibration_ids))
+    # print('Qhat', unstrat_qhat)
+    # print('Calibration Set Size',len(calibration_ids))
 
     unstrat_qhat_dict['qhat'].append(unstrat_qhat)
     unstrat_qhat_dict['calibration_set_size'].append(len(calibration_results_df['id'].unique()))
     unstrat_qhat_dict['fold'].append(fold)
 
-    print('Stratify Conformity Scores per Covariate')
+    # print('Stratify Conformity Scores per Covariate')
     # Merge datasets
     merged_data = conformity_scores_per_subject_df.merge(
         longitudinal_covariates, left_on='id', right_on='anon_id', how='inner'
@@ -328,7 +327,7 @@ for fold in range(10):
 
     covariates = ['Diagnosis']
     for c in covariates: 
-        print('Covariate', c)
+        # print('Covariate', c)
         # split the merged data into the covariate of interest
         covariate_unique_values = merged_data[c].unique()
         
@@ -338,11 +337,11 @@ for fold in range(10):
                 if cu not in ['CN', 'MCI', 'AD']:
                     continue
 
-            print('Covariate Value', cu)
-            print(type(cu))
+            # print('Covariate Value', cu)
+            # print(type(cu))
                 
             covariate_df = merged_data[merged_data[c] == cu]
-            print('Covariate DF', covariate_df.shape)
+            # print('Covariate DF', covariate_df.shape)
 
             conformity_scores = np.array(covariate_df['conformal_scores'])
             sorted_conformity_scores = np.sort(conformity_scores)
@@ -362,8 +361,8 @@ for fold in range(10):
             qhat_dict['calibration_set_size'].append(len(covariate_df['id'].unique()))
             qhat_dict['fold'].append(fold)
 
-    print('Conformalized Inference on Test Subjects')
-    print('Run Inference on Test Subjects')
+    # print('Conformalized Inference on Test Subjects')
+    # print('Run Inference on Test Subjects')
 
     # keep the test ids that belong to the longitudinal covariates
     test_ids = [x for x in test_ids if x in longitudinal_covariates['anon_id'].unique()]
@@ -373,8 +372,8 @@ for fold in range(10):
         winkler_scores = []
         subject_data = datasamples[datasamples['anon_id'] == id_]
         subject_covariates = longitudinal_covariates[longitudinal_covariates['anon_id'] == id_]
-        print('Subject Data', subject_data.shape)
-        print('Subject Covariates', subject_covariates.shape)
+        # print('Subject Data', subject_data.shape)
+        # print('Subject Covariates', subject_covariates.shape)
         # assert that subject_data has the same shape as subject_covariates
         # assert subject_data.shape[0] == subject_covariates.shape[0]
         
@@ -405,10 +404,10 @@ for fold in range(10):
             mean = y_preds.mean
 
         # Fetch the correct qhat value based on the covariate and perform stratified conformal inference
-        print('Test Subject ID:', id_)
+        # print('Test Subject ID:', id_)
         for c in covariates: 
             covariate_value = subject_covariates[c].values[0]
-            print(f"Processing covariate: {c}, Value: {covariate_value} (Type: {type(covariate_value)})")
+            # print(f"Processing covariate: {c}, Value: {covariate_value} (Type: {type(covariate_value)})")
             
             # Skip invalid or irrelevant covariate values
             if isinstance(covariate_value, float) or covariate_value in {'UKN', 'Unknown', 'other', 'More than one'}:
@@ -426,11 +425,11 @@ for fold in range(10):
             try:
                 qhat_strat = qhat_dict['qhat'][qhat_dict['covariate'].index(covariate_value)]
             except ValueError:
-                print(f"Qhat value not found for covariate: {c}, Value: {covariate_value}")
+                # print(f"Qhat value not found for covariate: {c}, Value: {covariate_value}")
                 continue
 
-            print('Qhat:', qhat_strat)
-            print('Covariate Value:', covariate_value)
+            # print('Qhat:', qhat_strat)
+            # print('Covariate Value:', covariate_value)
 
             # Calculate conformal intervals
             std = variance.sqrt()
@@ -453,7 +452,7 @@ for fold in range(10):
 
                 winkler_scores.append(winkler_score)
 
-            print('Storing the Results!')
+            # print('Storing the Results!')
 
             # Store the results in the dictionary
             population_conformalized_results['id'].extend([id_] * subject_x.shape[0])
@@ -486,20 +485,16 @@ for fold in range(10):
             group_conditional_conformalized_results['winkler'].extend(winkler_scores)
 
 conformalized_predictions_df = pd.DataFrame(data=population_conformalized_results)
-conformalized_predictions_df.to_csv('./results/group_conditional_' + str(list_index)  + '_results.csv')
+conformalized_predictions_df.to_csv('./results/group_conditional_' + str(list_index)  + '_results_calibrationset_' + str(calibrationset) + '_alpha_' + str(alpha) + '.csv')
 
 group_conditional_conformalized_predictions_df = pd.DataFrame(data=group_conditional_conformalized_results)
-group_conditional_conformalized_predictions_df.to_csv('./results/population_cp_' + str(list_index)  + '_results.csv')
+group_conditional_conformalized_predictions_df.to_csv('./results/population_cp_' + str(list_index)  + '_results_calibrationset_' + str(calibrationset) + '_alpha_' + str(alpha) + '.csv')
 
 # store the qhat values
 qhat_df = pd.DataFrame(data=qhat_dict)
-qhat_df.to_csv('./results/group_conditional_qhat_'+ str(list_index) +'csv')
+qhat_df.to_csv('./results/group_conditional_qhat_'+ str(list_index) +'_calibrationset_' + str(calibrationset) + '_alpha_' + str(alpha) + '.csv')
 
 unstrat_qhat_df = pd.DataFrame(data=unstrat_qhat_dict)
-unstrat_qhat_df.to_csv('./results/population_cp_qhat_' + str(list_index)  + '.csv')
+unstrat_qhat_df.to_csv('./results/population_cp_qhat_' + str(list_index)  + '_calibrationset_' + str(calibrationset) + '_alpha_' + str(alpha) + '.csv')
 
 t1 = time.time() - t0 
-print("Time elapsed: ", t1)
-print('Qhat', qhat)
-print('Calibration Set Size',len(calibration_results_df['id'].unique()))
-

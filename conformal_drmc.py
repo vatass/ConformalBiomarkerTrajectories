@@ -183,8 +183,8 @@ def conformalized_inference(model, test_x, test_y, test_ids,test_time, num_sampl
     unique_ids = np.unique(test_ids)
 
     all_mean_preds = []  # Collect mean predictions for all subjects
-    print('Within the inference code Qhat', qhat)
-    print('Unique IDs', len(unique_ids))
+    # print('Within the inference code Qhat', qhat)
+    # print('Unique IDs', len(unique_ids))
     for subject_id in unique_ids:
         subject_mask = (test_ids == subject_id)
         subject_x = test_x[torch.tensor(subject_mask, device=device)]
@@ -257,7 +257,7 @@ def conformalized_inference_with_train_sigma(model, test_x, test_y, test_ids,tes
     unique_ids = np.unique(test_ids)
 
     all_mean_preds = []  # Collect mean predictions for all subjects
-    print('Within the inference code Qhat', qhat)
+    # print('Within the inference code Qhat', qhat)
     print('Unique IDs', len(unique_ids))
     for subject_id in unique_ids:
         subject_mask = (test_ids == subject_id)
@@ -399,7 +399,7 @@ parser.add_argument("--file", help="Identifier for the data", default="./data/da
 parser.add_argument("--biomarker_idx", type=int, default=14)
 ## Conformal Prediction Parameters 
 parser.add_argument("--alpha", help='Significance Level', type=float, default=0.05)
-parser.add_argument("--calibrationset", help='Size of the Calibration Set', type=float, default=0.01)
+parser.add_argument("--calibrationset", help='Size of the Calibration Set', type=float, default=0.2)
 
 population_results = {'id': [], 'kfold': [], 'score': [], 'lower': [], 'upper': [], 'variance': [], 'y': [], 'time': [], 'ae': [], 'winkler': [] }
 conformal_results = {'id': [], 'kfold': [], 'score': [], 'lower': [], 'upper': [], 'variance': [], 'y': [], 'time': [], 'ae': [], 'winkler': [], 'study':[] }
@@ -425,9 +425,9 @@ elif alpha == 0.01:
 datasamples = pd.read_csv(file)
 list_index = biomarker_idx
 
-print(biomarker_idx)
+# print(biomarker_idx)
 for fold in range(10): 
-    print('FOLD::', fold)
+    # print('FOLD::', fold)
     train_ids, test_ids = [], []     
 
     with (open("./data/folds/fold_" + str(fold) +  "_train.pkl", "rb")) as openfile:
@@ -447,8 +447,8 @@ for fold in range(10):
     train_ids = train_ids[0]
     test_ids = test_ids[0]
 
-    print('Train IDs', len(train_ids))
-    print('Test IDs', len(test_ids))
+    # print('Train IDs', len(train_ids))
+    # print('Test IDs', len(test_ids))
 
     for t in test_ids: 
         if t in train_ids: 
@@ -476,8 +476,8 @@ for fold in range(10):
     ### Check if there is negative time
     time_ = train_x[:, -1].cpu().detach().numpy().tolist()
 
-    print('Train Time', len(time_))
-    print('Train Subjectes', len(corresponding_train_ids))
+    # print('Train Time', len(time_))
+    # print('Train Subjectes', len(corresponding_train_ids))
 
     test_y = test_y[:, list_index]
     train_y = train_y[:, list_index]
@@ -488,7 +488,7 @@ for fold in range(10):
     #### Define the Quantile Regressor ####
     # Constants
     input_dim = train_x.shape[1]  # Number of input features
-    epochs = 200
+    epochs = 700
     learning_rate = 0.02
     gpuid = 0  # Use -1 for CPU
 
@@ -505,7 +505,7 @@ for fold in range(10):
         learning_rate=learning_rate,
         gpuid=gpuid
     )
-    print("Training completed.")
+    # print("Training completed.")
 
 
     test_time = np.array(test_x[:, -1].cpu().detach().numpy())  # Convert directly to NumPy array
@@ -527,17 +527,17 @@ for fold in range(10):
         gpuid=gpuid
     )
 
-    print('Split the data into train and calibration set')
+    # print('Split the data into train and calibration set')
     ### Split the train data into train/calibration set ###
     # convert to float
     conformal_split_percentage = float(calibrationset)
 
-    print('Random Selection of Calibration Set')
+    # print('Random Selection of Calibration Set')
     calibration_ids = np.random.choice(train_ids, int(conformal_split_percentage*len(train_ids)), replace=False)
     train_ids = [x for x in train_ids if x not in calibration_ids]
 
-    print('Train IDs', len(train_ids))
-    print('Calibration IDs', len(calibration_ids))
+    # print('Train IDs', len(train_ids))
+    # print('Calibration IDs', len(calibration_ids))
 
     for t in calibration_ids:
         if t in train_ids: 
@@ -570,12 +570,12 @@ for fold in range(10):
     train_y = train_y.squeeze()
     calibration_y = calibration_y.squeeze()
 
-    print('Train the Deep Regressor')
+    # print('Train the Deep Regressor')
     # Initialize model
     conformal_model = DeepRegressionMC(input_dim, dropout_rate=0.2)
 
     # Train the model
-    print("Starting training...")
+    # print("Starting training...")
 
     train_deep_regression(
         model=conformal_model,
@@ -585,7 +585,7 @@ for fold in range(10):
         learning_rate=learning_rate,
         gpuid=gpuid
     )
-    print("Training completed.")
+    # print("Training completed.")
 
     # Calculat the Max Train Residual 
     train_time = np.array(train_x[:, -1].cpu().detach().numpy())  # Convert directly to NumPy array
@@ -616,11 +616,11 @@ for fold in range(10):
     )
 
     calibration_results_df = pd.DataFrame(calibration_results)
-    print('Calibration Results')
+    # print('Calibration Results')
 
     calibration_results_df = pd.DataFrame(data=calibration_results)
     
-    print('Calculate the Non-Conformity Scores')
+    # print('Calculate the Non-Conformity Scores')
     conformity_scores_per_subject = {'id': [], 'conformal_scores': []}
     for subject in calibration_results_df['id'].unique():
         subject_df = calibration_results_df[calibration_results_df['id'] == subject]
@@ -650,14 +650,14 @@ for fold in range(10):
     k = min(k, n)
     # Get the (n - k + 1)-th smallest value since we want the k-th largest value
     qhat = sorted_conformity_scores[k-1]
-    print('Qhat', qhat)
-    print('Calibration Set Size',len(calibration_ids))
+    # print('Qhat', qhat)
+    # print('Calibration Set Size',len(calibration_ids))
 
     qhat_dict['qhat'].append(qhat)
     qhat_dict['calibration_set_size'].append(len(calibration_results_df['id'].unique()))
     qhat_dict['fold'].append(fold)
 
-    print('Test the Conformalized Deep Regressor with Monte Carlo Dropout')
+    # print('Test the Conformalized Deep Regressor with Monte Carlo Dropout')
     test_time = np.array(test_x[:, -1].cpu().detach().numpy())  # Convert directly to NumPy array
     test_ids = corresponding_test_ids
     # convert test_ids to str
@@ -685,6 +685,6 @@ conformal_results_df = pd.DataFrame(conformal_results)
 
 # Save results to CSV
 qhat_df = pd.DataFrame(data=qhat_dict)
-qhat_df.to_csv("./results/qhat_drmc_"+str(biomarker_idx)+".csv", index=False)
-population_results_df.to_csv("./results/drmc_"+str(biomarker_idx)+"_results.csv", index=False)
-conformal_results_df.to_csv("./results/conformalized_drmc_"+str(biomarker_idx)+"_results.csv", index=False)
+qhat_df.to_csv("./results/qhat_drmc_"+str(biomarker_idx)+"_results_calibrationset_" + str(calibrationset) + "_alpha_" + str(alpha) + ".csv", index=False)
+population_results_df.to_csv("./results/drmc_"+str(biomarker_idx)+"_results_calibrationset_" + str(calibrationset) + "_alpha_" + str(alpha) + ".csv", index=False)
+conformal_results_df.to_csv("./results/conformalized_drmc_"+str(biomarker_idx)+"_results_calibrationset_" + str(calibrationset) + "_alpha_" + str(alpha) + ".csv", index=False)

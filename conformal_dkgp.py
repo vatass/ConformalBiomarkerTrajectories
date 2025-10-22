@@ -41,8 +41,8 @@ sns.set_style("white", {'axes.grid' : False})
 parser = argparse.ArgumentParser(description='Temporal Deep Kernel Single Task GP model for a single Biomarker')
 parser.add_argument("--gpuid", help="GPUs", default=0)
 parser.add_argument("--file", help="Identifier for the data", default="./data/data.csv")
-parser.add_argument("--conformalsplitpercentage", help="Percentage of spliting Population/Calibration", default=0.04)
-parser.add_argument("--alpha", help="Alpha", default=0.1)
+parser.add_argument("--calibrationset", help="Percentage of spliting Population/Calibration", default=0.2)
+parser.add_argument("--alpha", help="Alpha", default=0.05)
 parser.add_argument("--biomarker_idx", type=int, default=14)
 
 
@@ -55,7 +55,7 @@ alpha = float(args.alpha)
 
 results_dir = "./results"
 os.makedirs(results_dir, exist_ok=True)
-print(f"✅ Results directory : {results_dir}")
+# print(f"✅ Results directory : {results_dir}")
 
 population_results = {'id': [], 'kfold': [], 'score': [], 'lower': [], 'upper': [], 'variance': [], 'y': [], 'time': [], 'ae': [], 'winkler': []}
 calibration_results = {'id': [], 'kfold': [], 'score': [], 'lower': [], 'upper': [], 'variance': [], 'y': [], 'time': [], 'ae': []}
@@ -67,7 +67,7 @@ datasamples = pd.read_csv(file)
 list_index = biomarker_idx
 
 for fold in range(10): 
-    print('FOLD::', fold)
+    # print('FOLD::', fold)
     train_ids, test_ids = [], []     
 
     with (open("./data/folds/fold_" + str(fold) +  "_train.pkl", "rb")) as openfile:
@@ -87,9 +87,9 @@ for fold in range(10):
     train_ids = train_ids[0]
     test_ids = test_ids[0]
     
-    print('Train the Deep Kernel Regressor')
-    print('Train IDs', len(train_ids))
-    print('Test IDs', len(test_ids))
+    # print('Train the Deep Kernel Regressor')
+    # print('Train IDs', len(train_ids))
+    # print('Test IDs', len(test_ids))
 
     for t in test_ids: 
         if t in train_ids: 
@@ -116,8 +116,8 @@ for fold in range(10):
 
     time_ = train_x[:, -1].cpu().detach().numpy().tolist()
 
-    print('Train Time', len(time_))
-    print('Train Subjectes', len(corresponding_train_ids))
+    # print('Train Time', len(time_))
+    # print('Train Subjectes', len(corresponding_train_ids))
 
     test_y = test_y[:, list_index]
     train_y = train_y[:, list_index]
@@ -170,7 +170,7 @@ for fold in range(10):
     deepkernelmodel.eval()
     likelihood.eval()
 
-    print('Run Inference on Test Subjects')
+    # print('Run Inference on Test Subjects')
     for id_ in test_ids: 
         winkler_scores = [] 
         subject_data = datasamples[datasamples['anon_id'] == id_]
@@ -242,20 +242,18 @@ for fold in range(10):
         population_results['ae'].extend(ae.tolist())
         population_results['winkler'].extend(winkler_scores)
 
-    print('Train the Conformalized Deep Kernel Regressor')
+    # print('Train the Conformalized Deep Kernel Regressor')
     ## split the train_ids into train and calibration at random
 
-    conformal_split_percentage = args.conformalsplitpercentage
+    calibrationset = args.calibrationset
     # convert to float
-    conformal_split_percentage = float(conformal_split_percentage)
-
+    calibrationset = float(calibrationset)
 
     ## Select Randomly the Calibration Set
-    calibration_ids = np.random.choice(train_ids, int(conformal_split_percentage*len(train_ids)), replace=False)
+    calibration_ids = np.random.choice(train_ids, int(calibrationset*len(train_ids)), replace=False)
     train_ids = [x for x in train_ids if x not in calibration_ids]
 
-    print('Train IDs', len(train_ids))
-    print('Calibration IDs', len(calibration_ids))
+
 
     for t in calibration_ids:
         if t in train_ids: 
@@ -317,7 +315,7 @@ for fold in range(10):
     mll = gpytorch.mlls.ExactMarginalLogLikelihood(conformal_likelihood, conformal_deepkernelmodel)
 
     train_loss, val_loss = [], []
-    for i in tqdm(range(50)): # it was 200 
+    for i in tqdm(range(100)): # it was 200 
         conformal_deepkernelmodel.train()
         conformal_likelihood.train()
         optimizer.zero_grad()
@@ -332,7 +330,7 @@ for fold in range(10):
     conformal_deepkernelmodel.eval()
     conformal_likelihood.eval()
 
-    print('Run Inference on Calibration Subjects')
+    # print('Run Inference on Calibration Subjects')
     for id_ in calibration_ids:
         # print('Subject ID', id_)
         subject_data = datasamples[datasamples['anon_id'] == id_]
@@ -419,15 +417,15 @@ for fold in range(10):
     k = min(k, n)
     # Get the (n - k + 1)-th smallest value since we want the k-th largest value
     qhat = sorted_conformity_scores[k-1]
-    print('Qhat', qhat)
-    print('Calibration Set Size',len(calibration_ids))
+    # print('Qhat', qhat)
+    # print('Calibration Set Size',len(calibration_ids))
 
     qhat_dict['qhat'].append(qhat)
     qhat_dict['calibration_set_size'].append(len(calibration_results_df['id'].unique()))
     qhat_dict['fold'].append(fold)
 
-    print('Conformalized Inference on Test Subjects')
-    print('Run Inference on Test Subjects')
+    # print('Conformalized Inference on Test Subjects')
+    # print('Run Inference on Test Subjects')
     for id_ in test_ids: 
 
         winkler_scores = []
@@ -493,10 +491,10 @@ for fold in range(10):
 
        
 population_results_df = pd.DataFrame(data=population_results)
-population_results_df.to_csv('./results/dkgp_'  + str(biomarker_idx) + '_results.csv')
+population_results_df.to_csv('./results/dkgp_'  + str(biomarker_idx) + '_results_calibrationset_' + str(calibrationset) + '_alpha_' + str(alpha) + '.csv')
 
 conformalized_predictions_df = pd.DataFrame(data=conformalized_results)
-conformalized_predictions_df.to_csv('./results/conformalized_dkgp_' + str(biomarker_idx) + '_results.csv')
+conformalized_predictions_df.to_csv('./results/conformalized_dkgp_' + str(biomarker_idx) + '_results_calibrationset_' + str(calibrationset) + '_alpha_' + str(alpha) + '.csv')
 # store the qhat values
 qhat_df = pd.DataFrame(data=qhat_dict)
-qhat_df.to_csv('./results/dkgp_qhat_' + str(biomarker_idx) + '.csv')
+qhat_df.to_csv('./results/dkgp_qhat_' + str(biomarker_idx) + '_results_calibrationset_' + str(calibrationset) + '_alpha_' + str(alpha) + '.csv')

@@ -478,8 +478,8 @@ parser.add_argument("--gpuid", help="GPUs", default=0)
 parser.add_argument("--file", help="Identifier for the data", default="./data/data.csv")
 parser.add_argument("--biomarker_idx", type=int, default=14)
 ## Conformal Prediction Parameters 
-parser.add_argument("--alpha", help='Significance Level', type=float, default=0.1)
-parser.add_argument("--calibrationset", help='Size of the Calibration Set', type=float, default=0.04)
+parser.add_argument("--alpha", help='Significance Level', type=float, default=0.05)
+parser.add_argument("--calibrationset", help='Size of the Calibration Set', type=float, default=0.2)
 
 population_results = {'id': [], 'kfold': [], 'score': [], 'lower': [], 'upper': [], 'variance': [], 'y': [], 'time': [], 'ae': [], 'winkler': []  }
 conformal_results = {'id': [], 'kfold': [], 'score': [], 'lower': [], 'upper': [], 'variance': [], 'y': [], 'time': [], 'ae': [], 'winkler': [], 'study': [] }
@@ -500,7 +500,7 @@ datasamples = pd.read_csv(file)
 
 
 for fold in range(10): 
-    print('FOLD::', fold)
+    # print('FOLD::', fold)
     train_ids, test_ids = [], []     
 
     with (open("./data/folds/fold_" + str(fold) +  "_train.pkl", "rb")) as openfile:
@@ -520,8 +520,8 @@ for fold in range(10):
     train_ids = train_ids[0]
     test_ids = test_ids[0]
 
-    print('Train IDs', len(train_ids))
-    print('Test IDs', len(test_ids))
+    # print('Train IDs', len(train_ids))
+    # print('Test IDs', len(test_ids))
 
     for t in test_ids: 
         if t in train_ids: 
@@ -579,7 +579,7 @@ for fold in range(10):
     model = DeepQuantileRegressor(input_dim, output_quantiles)
 
     # Train the model
-    print("Starting training...")
+    # print("Starting training...")
     train_deep_quantile_regressor(
         model=model,
         train_x=train_x,
@@ -589,7 +589,7 @@ for fold in range(10):
         learning_rate=0.01,
         gpuid=gpuid
     )
-    print("Training completed.")
+    # print("Training completed.")
 
     test_time = np.array(test_x[:, -1].cpu().detach().numpy())  # Convert directly to NumPy array
     test_ids = corresponding_test_ids
@@ -614,12 +614,12 @@ for fold in range(10):
     conformal_split_percentage = float(calibrationset)
 
     # random selection of the calibration subjects! 
-    print('Random Selection of Calibration Set')
+    # print('Random Selection of Calibration Set')
     calibration_ids = np.random.choice(train_ids, int(conformal_split_percentage*len(train_ids)), replace=False)
     train_ids = [x for x in train_ids if x not in calibration_ids]
 
-    print('Train IDs', len(train_ids))
-    print('Calibration IDs', len(calibration_ids))
+    # print('Train IDs', len(train_ids))
+    # print('Calibration IDs', len(calibration_ids))
 
     for t in calibration_ids:
         if t in train_ids: 
@@ -656,7 +656,7 @@ for fold in range(10):
     conformal_model = DeepQuantileRegressor(input_dim, output_quantiles)
 
     # Train the model
-    print("Starting training...")
+    # print("Starting training...")
     train_deep_quantile_regressor(
         model=conformal_model,
         train_x=train_x,
@@ -666,10 +666,10 @@ for fold in range(10):
         learning_rate=0.01,
         gpuid=gpuid
     )
-    print("Conformal Quantile Regressor: Training completed.")
+    # print("Conformal Quantile Regressor: Training completed.")
 
     ### Calculate the Non-Conformity Scores ###
-    print('Run Inference on Calibration Subjects')
+    # print('Run Inference on Calibration Subjects')
     calibration_time = np.array(calibration_x[:, -1].cpu().detach().numpy())  # Convert directly to NumPy array
     calibration_ids = corresponding_calibration_ids
     # convert test_ids to str
@@ -690,7 +690,7 @@ for fold in range(10):
     )
     calibration_results_df = pd.DataFrame(data=calibration_results)
     
-    print('Calculate the Non-Conformity Scores')
+    # print('Calculate the Non-Conformity Scores')
     conformity_scores_per_subject = {'id': [], 'conformal_scores': []} 
     for subject in calibration_results_df['id'].unique():
         subject_df = calibration_results_df[calibration_results_df['id'] == subject]
@@ -719,22 +719,22 @@ for fold in range(10):
     k = min(k, n)
     # Get the (n - k + 1)-th smallest value since we want the k-th largest value
     qhat = sorted_conformity_scores[k-1]
-    print('Qhat', qhat)
-    print('Calibration Set Size',len(calibration_ids))
+    # print('Qhat', qhat)
+    # print('Calibration Set Size',len(calibration_ids))
 
     qhat_dict['qhat'].append(qhat)
     qhat_dict['calibration_set_size'].append(len(calibration_results_df['id'].unique()))
     qhat_dict['fold'].append(fold)
 
     ### Test the Conformalized Quantile Regressor ###
-    print('Run Inference for the Conformalized Quantile Regressor on Test Subjects')
+    # print('Run Inference for the Conformalized Quantile Regressor on Test Subjects')
     test_time = np.array(test_x[:, -1].cpu().detach().numpy())  # Convert directly to NumPy array   
     test_ids = corresponding_test_ids
     # convert test_ids to str
     test_ids = [str(i) for i in test_ids]
 
     # Test and update results
-    print('Conformalize with Qhat', qhat, 'for alpha', alpha)
+    # print('Conformalize with Qhat', qhat, 'for alpha', alpha)
     conformal_results = conformalized_inference_on_set(
         model=conformal_model,
         test_x=test_x,
@@ -756,9 +756,9 @@ conformal_results_df = pd.DataFrame(conformal_results)
 
 # Save results to CSV
 qhat_df = pd.DataFrame(qhat_dict)
-qhat_df.to_csv('./results/qhat_quantile_'+str(biomarker_idx)+'.csv', index=False)
-population_results_df.to_csv("./results/deep_quantile_regression_"+str(biomarker_idx)+"_results.csv", index=False)
-conformal_results_df.to_csv("./results/conformalized_deep_quantile_regression_"+str(biomarker_idx)+"_results.csv", index=False)
+qhat_df.to_csv('./results/qhat_quantile_'+str(biomarker_idx)+"_results_calibrationset_" + str(calibrationset) + "_alpha_" + str(alpha) + ".csv", index=False)
+population_results_df.to_csv("./results/deep_quantile_regression_"+str(biomarker_idx)+"_results_calibrationset_" + str(calibrationset) + "_alpha_" + str(alpha) + ".csv", index=False)
+conformal_results_df.to_csv("./results/conformalized_deep_quantile_regression_"+str(biomarker_idx)+"_results_calibrationset_" + str(calibrationset) + "_alpha_" + str(alpha) + ".csv", index=False)
 
 def calculate_subject_level_metrics(df):
     df['interval_width'] = df['upper'] - df['lower']
@@ -784,7 +784,7 @@ def calculate_fold_metrics(results, method_name):
 dqr_results = calculate_subject_level_metrics(population_results_df)
 dqr_conformalized_results = calculate_subject_level_metrics(conformal_results_df)
 
-print('DQR Results')
-print(dqr_results.head())
-print('DQR Conformalized Results')
-print(dqr_conformalized_results.head())
+# print('DQR Results')
+# print(dqr_results.head())
+# print('DQR Conformalized Results')
+# print(dqr_conformalized_results.head())
