@@ -8,7 +8,7 @@ This repository contains the implementation and experimental code for the paper 
 ## Authors
 
 - **Vasiliki Tassopoulou**$^{1,*}$ 
-- **Charis Stamouli**$^{2,*}$ 
+- **Charis Stamouli**$^{2,*}$  
 - **Haochang Shou**$^{3}$ 
 - **George J. Pappas**$^{2}$
 - **Christos Davatzikos**$^{1}$ 
