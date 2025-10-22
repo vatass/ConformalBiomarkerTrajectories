@@ -3,8 +3,6 @@
 [![NeurIPS](https://img.shields.io/badge/NeurIPS-2025-blue.svg)](https://neurips.cc/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-## Abstract
-
 This repository contains the implementation and experimental code for the paper **"Uncertainty-Calibrated Prediction of Randomly-Timed Biomarker Trajectories with Conformal Bands"** accepted at NeurIPS 2025.
 
 ## Authors
@@ -23,6 +21,10 @@ $^{*}$ Equal contribution
 ## Overview
 
 This work presents a novel approach for predicting biomarker trajectories with uncertainty quantification using conformal prediction methods. The method addresses the challenge of predicting biomarker evolution over time when measurement times are irregular and random.
+
+### Figure. Predictive Bounds Before and After Conformalization
+![Irregular and Randomly-timed Biomarker Trajectories](IrregularPatientTrajectories.png)
+
 
 ## Key Features
 
