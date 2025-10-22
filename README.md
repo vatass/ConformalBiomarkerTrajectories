@@ -11,7 +11,7 @@ This repository contains the implementation and experimental code for the paper 
 - **Charis Stamouli**$^{2,*}$ 
 - **Haochang Shou**$^{3}$ 
 - **George J. Pappas**$^{2}$
-- - **Christos Davatzikos**$^{1}$ 
+- **Christos Davatzikos**$^{1}$ 
 
 $^{1}$ Center for AI and Data Science for Integrated Diagnostics (AI2D), Perelman School of Medicine, University of Pennsylvania, Philadelphia, PA 19104, USA  
 $^{2}$ Department of Electrical and Systems Engineering, University of Pennsylvania  
