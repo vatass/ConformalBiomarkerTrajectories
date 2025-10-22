@@ -41,9 +41,9 @@ This work presents a novel approach for predicting biomarker trajectories with u
 │   ├── conformal/           # Conformal prediction methods
 │   ├── data/                # Data processing utilities
 │   └── utils/               # Helper functions
-├── figures/                 # Figures
-├── data/                    # Data directory 
-└── results/                 # Experimental results
+├── figures/                 # Figures (generated after you execute the experiments)
+├── data/                    # Data directory (containes the sample, anonymized data)
+└── results/                 # Experimental results (generated after you execute the experiments)
 ```
 
 ## Installation
