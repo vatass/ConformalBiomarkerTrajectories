@@ -67,45 +67,17 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-## Usage
-
-### Basic Example
-
-```python
-from src.models.trajectory_predictor import ConformalTrajectoryPredictor
-from src.conformal.conformal_bands import ConformalBands
-
-# Initialize the predictor
-predictor = ConformalTrajectoryPredictor()
-
-# Train the model
-predictor.fit(training_data)
-
-# Generate predictions with conformal bands
-predictions, bands = predictor.predict_with_uncertainty(test_data)
-```
 
 ### Running Experiments
 
 ```bash
 # Run main experiments
-python experiments/main_experiment.py
-
-# Run ablation studies
-python experiments/ablation_studies.py
+./conformal_experiments.sh 
 ```
 
 ## Data
 
-The experiments in this paper use longitudinal biomarker data. Due to privacy and data sharing restrictions, the actual datasets are not included in this repository. Please refer to the paper for details on the datasets used.
-
-## Results
-
-Key results from the paper:
-
-- Improved uncertainty calibration compared to baseline methods
-- Valid coverage guarantees for prediction intervals
-- Robust performance across different biomarker types and measurement schedules
+The experiments in this repository use sample and anonymized longitudinal biomarker data. Due to privacy and data sharing restrictions, the actual datasets are not included in this repository as well as its covariates (Diagnosis, Sex, APOE4 Alleles and Education)
 
 ## Citation
 
@@ -131,8 +103,8 @@ We thank the reviewers and the NeurIPS community for their valuable feedback. Th
 ## Contact
 
 For questions about this work, please contact:
-- Vasiliki Tassopoulou: [email]
-- Charis Stamouli: [email]
+- Vasiliki Tassopoulou: tassopoulouvasiliki@gmail.com / vtass@seas.upenn.edu
+- Charis Stamouli: xarisstml@gmail.com / stamouli@seas.upenn.edu
 
 ## Contributing
 
