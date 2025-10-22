@@ -1,6 +1,5 @@
 absl-py==1.4.0
 accelerate==0.9.0
--e git+ssh://git@github.com/vatass/AdaptiveShrinkageDKGP.git@712274886e1e9caee0b628a1c375b22ee9d2eed5#egg=adaptive_shrinkage_dkgp
 aiohttp==3.8.1
 aiosignal==1.2.0
 alabaster==0.7.13
@@ -99,7 +98,6 @@ google-auth==1.35.0
 google-auth-oauthlib==0.4.6
 google-pasta==0.2.0
 gpflow==1.1.0
-gppm @ git+https://gitlab.inria.fr/epione/GP_progression_model_V2.git@829889f3a4162694ae0ba46d9421abfda1711006
 gpytorch==1.6.0
 graphtools==1.5.2
 graphviz==0.19.1
