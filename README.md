@@ -15,7 +15,7 @@ This repository contains the implementation and experimental code for the paper 
 - **George J. Pappas**$^{2}$ - University of Pennsylvania
 - **Christos Davatzikos**$^{1}$ - University of Pennsylvania
 
-$^{1}$ Department of Radiology, University of Pennsylvania  
+$^{1}$ Center for AI and Data Science for Integrated Diagnostics (AI2D), Perelman School of Medicine, University of Pennsylvania, Philadelphia, PA 19104, USA  
 $^{2}$ Department of Electrical and Systems Engineering, University of Pennsylvania  
 $^{3}$ Department of Biostatistics, Epidemiology and Informatics, University of Pennsylvania  
 $^{*}$ Equal contribution
@@ -41,9 +41,8 @@ This work presents a novel approach for predicting biomarker trajectories with u
 │   ├── conformal/           # Conformal prediction methods
 │   ├── data/                # Data processing utilities
 │   └── utils/               # Helper functions
-├── experiments/             # Experimental scripts
-├── notebooks/               # Jupyter notebooks for analysis
-├── data/                    # Data directory (not included in repo)
+├── figures/                 # Figures
+├── data/                    # Data directory 
 └── results/                 # Experimental results
 ```
 
