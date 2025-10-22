@@ -31,24 +31,8 @@ This work presents a novel approach for predicting biomarker trajectories with u
 - **Uncertainty Calibration**: Ensures prediction intervals maintain proper coverage guarantees
 - **Biomarker Trajectory Modeling**: Specialized for longitudinal biomarker data analysis
 
-## Repository Structure
-
-```
-├── README.md                 # This file
-├── requirements.txt          # Python dependencies
-├── src/                     # Source code
-│   ├── models/              # Model implementations
-│   ├── conformal/           # Conformal prediction methods
-│   ├── data/                # Data processing utilities
-│   └── utils/               # Helper functions
-├── figures/                 # Figures (generated after you execute the experiments)
-├── data/                    # Data directory (containes the sample, anonymized data)
-└── results/                 # Experimental results (generated after you execute the experiments)
-```
 
 ## Installation
-
-
 
 1. Clone the repository:
 ```bash
@@ -59,7 +43,7 @@ cd ConformalBiomarkerTrajectories
 2. Create a virtual environment:
 ```bash
 python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+source venv/bin/activate  
 ```
 
 3. Install dependencies:
@@ -106,10 +90,6 @@ For questions about this work, please contact:
 - Vasiliki Tassopoulou: tassopoulouvasiliki@gmail.com / vtass@seas.upenn.edu
 - Charis Stamouli: xarisstml@gmail.com / stamouli@seas.upenn.edu
 
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
 ---
 
 ## System Specifications
@@ -120,42 +100,6 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 **RAM:** 754 GB  
 **GPU:** 2× NVIDIA RTX A6000 (48 GB each, CUDA 12.4, Driver 550.78)  
 **PyTorch:** 1.13.1+cu117 (CUDA 11.7)
-
-## Environment Setup
-
-This project requires a conda environment with specific dependencies. Here are the setup instructions:
-
-### Method 1: Using Conda Environment File (Recommended)
-
-```bash
-# Create a new conda environment using the exported requirements
-conda create --name conformal-biomarker --file conda_requirements.txt
-
-# Activate the environment
-conda activate conformal-biomarker
-
-# Install additional Python packages
-pip install -r requirements.txt
-```
-
-### Method 2: Manual Environment Creation
-
-If the above method doesn't work, create the environment manually:
-
-```bash
-# Create a new conda environment with Python 3.8
-conda create -n conformal-biomarker python=3.8
-conda activate conformal-biomarker
-
-# Install core dependencies
-conda install numpy=1.22.3 pandas=1.2.3 scipy=1.9.3 scikit-learn=1.3.0
-conda install pytorch=1.12.1 cpuonly -c pytorch
-conda install gpytorch -c gpytorch
-conda install pyyaml=6.0.2 joblib=1.4.2
-
-# Install additional packages
-pip install -r requirements.txt
-```
 
 ### Key Dependencies
 
