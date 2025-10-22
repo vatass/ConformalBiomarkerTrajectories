@@ -82,10 +82,6 @@ If you use this code in your research, please cite our paper:
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## Acknowledgments
-
-We thank the reviewers and the NeurIPS community for their valuable feedback. This work was supported by [funding information].
-
 ## Contact
 
 For questions about this work, please contact:
