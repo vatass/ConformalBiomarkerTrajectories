@@ -1,5 +1,5 @@
 '''
-Visualizations
+Visualization Script for NeurIPS Paper
 '''
 
 import pandas as pd
@@ -14,7 +14,7 @@ import matplotlib.lines as mlines
 
 os.makedirs('./figures', exist_ok=True)
 
-parser = argparse.ArgumentParser(description='Generate plots for ICML paper')
+parser = argparse.ArgumentParser(description='Generate plots for NeurIPS paper')
 parser.add_argument('--r', type=int, default=14, help='Biomarker Index to Plot')
 parser.add_argument('--cs', type=float, default=0.2, help='Calibration Split Percentage')
 parser.add_argument('--alpha', type=float, default=0.1, help='Confidence Level Alpha')
@@ -81,24 +81,6 @@ def calculate_subject_level_metrics_per_covariate(df):
     })).reset_index(drop=True)
     return grouped
 
-
-def calculate_wcrc(subject_df):
-    wcrc_list = []
-    y0 = subject_df.iloc[0]["y"]
-    t0 = subject_df.iloc[0]["time"]
-    t_last = subject_df["time"].max()
-    y_min = subject_df["lower"].iloc[-1]
-    wcrc = (y_min - y0) / (t_last - t0)
-    return wcrc
-
-def classify_progressor(wcrc, tau_star):
-    """
-    Return 1 for progressor, 0 for stable.
-    For declining biomarkers a 'more negative' WCRC means faster loss.
-    """
-    return int(wcrc <= tau_star)
-
-######################################
 
 # SHARED STYLE 
 plt.rcParams.update({
@@ -315,11 +297,6 @@ bootstrap_conformalized_fold_metrics = calculate_fold_metrics(bootstrap_conforma
 # Combine results for plotting
 combined_metrics = pd.concat([bayesian_fold_metrics, conformalized_fold_metrics, dqr_fold_metrics, dqr_conformalized_fold_metrics, drmc_fold_metrics, drmc_conformalized_fold_metrics, bootstrap_fold_metrics, bootstrap_conformalized_fold_metrics])
 combined_metrics.to_csv(f'./figures/combined_metrics_allbaselines_{r}_alpha_{alpha}_cs_{cs}.csv', index=False)
-
-import pandas as pd
-import matplotlib.pyplot as plt
-import matplotlib.cm as cm
-
 # Load the data
 data = pd.read_csv(f"./figures/combined_metrics_allbaselines_{r}_alpha_{alpha}_cs_{cs}.csv")
 # Process the data
@@ -599,18 +576,6 @@ stratified_conformalized_merged.to_csv(f'./figures/stratified_dkgp_merged_{r}_{c
 unstratified_data = pd.read_csv(f"./figures/unstratified_dkgp_merged_{r}_{cs}_{alpha}.csv")
 stratified_data = pd.read_csv(f"./figures/stratified_dkgp_merged_{r}_{cs}_{alpha}.csv")
 
-# Function to calculate confidence intervals
-def calculate_ci(data):
-    mean = data.mean()
-    std = data.std()
-    n = len(data)
-    ci = 1.96 * (std / np.sqrt(n))  # 95% confidence interval
-    return mean, ci
-
-# Define focused covariates and values
-focused_covariates = {
-    'Diagnosis': ['AD', 'CN', 'MCI'],
-}
 # Define marker shapes for each covariate
 marker_map = {
     'Diagnosis': 'o',        # Circle
@@ -665,19 +630,6 @@ x_positions = np.arange(len(unstratified_means))
 unstratified_data = pd.read_csv(f"./figures/unstratified_dkgp_merged_{r}_{cs}_{alpha}.csv")
 stratified_data = pd.read_csv(f"./figures/stratified_dkgp_merged_{r}_{cs}_{alpha}.csv")
 
-# Function to calculate confidence intervals
-def calculate_ci(data):
-    mean = data.mean()
-    std = data.std()
-    n = len(data)
-    ci = 1.96 * (std / np.sqrt(n))  # 95% confidence interval
-    return mean, ci
-
-# Define focused covariates and values
-focused_covariates = {
-    'Diagnosis': ['AD', 'CN', 'MCI']
-}
-
 # Define marker shapes and colors for stratified and unstratified data
 marker_map = {'Diagnosis': 'o'}
 colors = {'Group-Conditional Conformal Prediction': '#92140c', 'Population Conformal Prediction': '#111D4A'}
@@ -697,11 +649,6 @@ def calculate_ci(data):
     n = len(data)
     ci = 1.96 * (std / np.sqrt(n))  # 95% confidence interval
     return mean, ci
-
-
-focused_covariates = {
-    'Diagnosis': ['CN', 'MCI', 'AD']
-    }
 
 # Define marker shapes and colors for stratified and unstratified data
 colors = {'Group-Conditional Conformal Prediction': '#92140c', 'Population Conformal Prediction': '#111D4A'}
@@ -735,7 +682,6 @@ offset = 0
 marker_map = {
     'Diagnosis': 'o',        # Circle
 }
-
 
 # Iterate through covariates and plot their metrics
 for covariate, values in focused_covariates.items():
@@ -851,9 +797,8 @@ shape_legend_elements = [
     mlines.Line2D([], [], color='black', marker=marker_map['Diagnosis'], linestyle='None', markersize=8, label='Diagnosis', markerfacecolor='black'),
 ]
 
-# **Create Custom Legend for Biomarkers (PLACEHOLDERS)**
 biomarker_legend_elements = [
-    mlines.Line2D([], [], color='black', marker='o', linestyle='None', markersize=8, label='Ventricular Volume', markerfacecolor='black'),
+    mlines.Line2D([], [], color='black', marker='o', linestyle='None', markersize=8, label='Hippocampal Volume', markerfacecolor='black'),
 ]
 
 # Add legends outside the plot
