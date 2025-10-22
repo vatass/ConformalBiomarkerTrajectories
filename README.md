@@ -112,7 +112,14 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ---
 
-*This repository is associated with the NeurIPS 2025 paper "Uncertainty-Calibrated Prediction of Randomly-Timed Biomarker Trajectories with Conformal Bands".*
+## System Specifications
+
+**OS:** Ubuntu 18.04.6 LTS  
+**Kernel:** 5.4.0-150-generic  
+**CPU:** Intel Xeon Gold 6248R (24 cores / 96 threads)  
+**RAM:** 754 GB  
+**GPU:** 2× NVIDIA RTX A6000 (48 GB each, CUDA 12.4, Driver 550.78)  
+**PyTorch:** 1.13.1+cu117 (CUDA 11.7)
 
 ## Environment Setup
 
