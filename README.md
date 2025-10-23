@@ -20,7 +20,7 @@ $^{*}$ Equal contribution
 
 ## Overview
 
-This work presents a novel approach for predicting biomarker trajectories with uncertainty quantification using conformal prediction methods. The method addresses the challenge of predicting biomarker evolution over time when measurement times are irregular and random.
+This work presents a novel approach for predicting biomarker trajectories with uncertainty quantification using conformal prediction. The method addresses the challenge of predicting biomarker evolution over time when measurement times are irregular and random.
 
 ### Example of irregular and randomly-timed biomarker trajectories for 5 subjects
 ![Irregular and Randomly-timed Biomarker Trajectories](IrregularPatientTrajectories.png)
