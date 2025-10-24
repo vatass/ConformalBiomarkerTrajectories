@@ -55,7 +55,7 @@ pip install -r requirements.txt
 
 ## 📂 Repository Structure
 
-```bash
+```text
 ConformalBiomarkerTrajectories/
 ├── *.py                 # Core experiment and utility scripts
 ├── data/                # Input datasets, covariates, and fold splits
@@ -63,7 +63,7 @@ ConformalBiomarkerTrajectories/
 ├── figures/             # Generated figures and visualizations
 ├── requirements.txt     # Project dependencies
 └── README.md            # Repository documentation
- 
+
 
 ### Run Experiments
 
