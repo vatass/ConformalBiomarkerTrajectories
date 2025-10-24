@@ -3,17 +3,15 @@
 [![NeurIPS](https://img.shields.io/badge/NeurIPS-2025-blue.svg)](https://neurips.cc/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-## Abstract
-
 This repository contains the implementation and experimental code for the paper **"Uncertainty-Calibrated Prediction of Randomly-Timed Biomarker Trajectories with Conformal Bands"** accepted at NeurIPS 2025.
 
 ## Authors
 
-- **Vasiliki Tassopoulou**$^{1,*}$ - University of Pennsylvania
-- **Charis Stamouli**$^{2,*}$ - University of Pennsylvania  
-- **Haochang Shou**$^{3}$ - University of Pennsylvania
-- **George J. Pappas**$^{2}$ - University of Pennsylvania
-- **Christos Davatzikos**$^{1}$ - University of Pennsylvania
+- **Vasiliki Tassopoulou**$^{1,*}$ 
+- **Charis Stamouli**$^{2,*}$  
+- **Haochang Shou**$^{3}$ 
+- **George J. Pappas**$^{2}$
+- **Christos Davatzikos**$^{1}$ 
 
 $^{1}$ Center for AI and Data Science for Integrated Diagnostics (AI2D), Perelman School of Medicine, University of Pennsylvania, Philadelphia, PA 19104, USA  
 $^{2}$ Department of Electrical and Systems Engineering, University of Pennsylvania  
@@ -22,7 +20,11 @@ $^{*}$ Equal contribution
 
 ## Overview
 
-This work presents a novel approach for predicting biomarker trajectories with uncertainty quantification using conformal prediction methods. The method addresses the challenge of predicting biomarker evolution over time when measurement times are irregular and random.
+This work presents a novel approach for predicting biomarker trajectories with uncertainty quantification using conformal prediction. The method addresses the challenge of predicting biomarker evolution over time when measurement times are irregular and random.
+
+### Example of irregular and randomly-timed biomarker trajectories for 5 subjects
+![Irregular and Randomly-timed Biomarker Trajectories](IrregularPatientTrajectories.png)
+
 
 ## Key Features
 
@@ -89,10 +91,6 @@ If you use this code in your research, please cite our paper:
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Acknowledgments
-
-We thank the reviewers and the NeurIPS community for their valuable feedback. This work was supported by [funding information].
 
 ## Contact
 
