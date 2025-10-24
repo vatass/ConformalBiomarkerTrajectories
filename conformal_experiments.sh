@@ -14,21 +14,24 @@ if [[ ! -f "$DATA_FILE" ]]; then
   exit 1
 fi
 
+# Creates the 10-fold train/test splits
+python create_folds.py
+
 for roi_idx in "${BIOMARKER_INDICES[@]}"; do
   for alpha in "${ALPHAS[@]}"; do
     echo "Running conformal experiments for biomarker index ${roi_idx} with alpha=${alpha}"
 
-    # python conformal_bootstrap.py \
-    #   --file "$DATA_FILE" \
-    #   --biomarker_idx "$roi_idx" \
-    #   --alpha "$alpha" \
-    #   --calibrationset 0.2
+    python conformal_bootstrap.py \
+      --file "$DATA_FILE" \
+      --biomarker_idx "$roi_idx" \
+      --alpha "$alpha" \
+      --calibrationset 0.2
 
-    # python conformal_dkgp.py \
-    #   --file "$DATA_FILE" \
-    #   --biomarker_idx "$roi_idx" \
-    #   --alpha "$alpha" \
-    #   --calibrationset 0.2
+    python conformal_dkgp.py \
+      --file "$DATA_FILE" \
+      --biomarker_idx "$roi_idx" \
+      --alpha "$alpha" \
+      --calibrationset 0.2
 
     python conformal_drmc.py \
       --file "$DATA_FILE" \
@@ -36,11 +39,11 @@ for roi_idx in "${BIOMARKER_INDICES[@]}"; do
       --alpha "$alpha" \
       --calibrationset 0.2
 
-    # python conformal_quantile_regression.py \
-    #   --file "$DATA_FILE" \
-    #   --biomarker_idx "$roi_idx" \
-    #   --alpha "$alpha" \
-    #   --calibrationset 0.2
+    python conformal_quantile_regression.py \
+      --file "$DATA_FILE" \
+      --biomarker_idx "$roi_idx" \
+      --alpha "$alpha" \
+      --calibrationset 0.2
 
   done
 done
@@ -49,17 +52,17 @@ echo "Conformal experiments completed."
 
 echo "Running group conditional conformal dkgp for the Diagnosis variable..."
 
-# for roi_idx in "${BIOMARKER_INDICES[@]}"; do
-#   for alpha in "${ALPHAS[@]}"; do
-#     echo "Running conformal experiments for biomarker index ${roi_idx} with alpha=${alpha}"
+for roi_idx in "${BIOMARKER_INDICES[@]}"; do
+  for alpha in "${ALPHAS[@]}"; do
+    echo "Running conformal experiments for biomarker index ${roi_idx} with alpha=${alpha}"
 
-#     python group_conditional_conformal_dkgp.py \
-#       --file "$DATA_FILE" \
-#       --biomarker_idx "$roi_idx" \
-#       --alpha "$alpha" \
-#       --calibrationset 0.2
-#   done
-# done
+    python group_conditional_conformal_dkgp.py \
+      --file "$DATA_FILE" \
+      --biomarker_idx "$roi_idx" \
+      --alpha "$alpha" \
+      --calibrationset 0.2
+  done
+done
 
 echo "Genarate Plots.."
 python plots.py
