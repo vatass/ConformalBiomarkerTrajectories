@@ -51,6 +51,16 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
+## 📂 Repository Structure
+
+ConformalBiomarkerTrajectories/
+├── *.py # Core experiment and utility scripts
+├── data/ # Input datasets, covariates, and fold splits
+├── results/ # Model outputs and conformalized prediction results
+├── figures/ # Generated figures and visualizations
+├── requirements.txt # Project dependencies
+└── README.md # Repository documentation
+ 
 
 ### Running Experiments
 
