@@ -65,7 +65,7 @@ ConformalBiomarkerTrajectories/
 └── README.md            # Repository documentation
 
 
-### Run Experiments
+## Run Experiments
 
 ```bash
 # Run main experiments
