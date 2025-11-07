@@ -18,9 +18,9 @@ $^{2}$ Department of Electrical and Systems Engineering, University of Pennsylva
 $^{3}$ Department of Biostatistics, Epidemiology and Informatics, University of Pennsylvania  
 $^{*}$ Equal contribution
 
-## Overview
-
-This work presents a novel approach for predicting biomarker trajectories with uncertainty quantification using conformal prediction. The method addresses the challenge of predicting biomarker evolution over time when measurement times are irregular and random.
+## Contributions
+1. We design conformal prediction bands of **randomly-timed** biomarker trajectories.
+2. Using these prediction bands, we develop an **uncertainty-calibrated** method of identifying **high-risk patients**.
 
 ![Conformal Prediction for Randomly-timed Trajectories](visual.png)
 
