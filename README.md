@@ -19,8 +19,10 @@ $^{3}$ Department of Biostatistics, Epidemiology and Informatics, University of 
 $^{*}$ Equal contribution
 
 ## Contributions
+
 1. We design conformal prediction bands of **randomly-timed** biomarker trajectories.
-2. Using these prediction bands, we develop an **uncertainty-calibrated** method of identifying **high-risk patients**.
+   
+3. Using these prediction bands, we develop an **uncertainty-calibrated** method of identifying **high-risk patients**.
 
 ![Conformal Prediction for Randomly-timed Trajectories](visual.png)
 
@@ -28,14 +30,6 @@ $^{*}$ Equal contribution
 
 ### Example of irregular and randomly-timed biomarker trajectories for 5 subjects
 ![Irregular and Randomly-timed Biomarker Trajectories](IrregularPatientTrajectories.png)
-
-
-## Key Features
-
-- **Conformal Prediction**: Provides statistically valid uncertainty bands for biomarker trajectory predictions
-- **Random Timing Handling**: Robust to irregular and randomly-timed biomarker measurements
-- **Uncertainty Calibration**: Ensures prediction intervals maintain proper coverage guarantees
-- **Biomarker Trajectory Modeling**: Specialized for longitudinal biomarker data analysis
 
 
 ## Installation
